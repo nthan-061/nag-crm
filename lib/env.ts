@@ -1,7 +1,14 @@
 const requiredEnv = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"] as const;
 
 function clean(value: string | undefined) {
-  return value?.trim();
+  const trimmed = value?.trim();
+  if (!trimmed) return trimmed;
+
+  if (trimmed.startsWith("EVOLUTION_INSTANCE=")) {
+    return trimmed.replace(/^EVOLUTION_INSTANCE=/, "");
+  }
+
+  return trimmed;
 }
 
 export function getEnv() {

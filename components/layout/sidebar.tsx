@@ -1,39 +1,50 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { BarChart3, KanbanSquare, MessageSquareText, Settings } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { label: "Dashboard", icon: BarChart3, active: true },
-  { label: "Pipeline", icon: KanbanSquare },
-  { label: "Leads", icon: MessageSquareText },
-  { label: "Configurações", icon: Settings }
+  { label: "Dashboard", icon: BarChart3, href: "/dashboard" },
+  { label: "Pipeline", icon: KanbanSquare, href: "/pipeline" },
+  { label: "Leads", icon: MessageSquareText, href: "/leads" },
+  { label: "Configuracoes", icon: Settings, href: "/settings" }
 ];
 
 export function Sidebar() {
+  const pathname = usePathname();
+
   return (
     <Card className="flex h-full flex-col gap-6 p-5">
       <div>
         <p className="text-xs uppercase tracking-[0.32em] text-accent">Nathan Alves Group</p>
         <h1 className="mt-3 text-2xl font-semibold text-foreground">NAG CRM</h1>
-        <p className="mt-2 text-sm text-secondary">Operação comercial com WhatsApp em tempo real.</p>
+        <p className="mt-2 text-sm text-secondary">Operacao comercial com WhatsApp em tempo real.</p>
       </div>
 
       <nav className="space-y-2">
         {items.map((item) => {
           const Icon = item.icon;
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/dashboard" && pathname.startsWith(item.href));
+
           return (
-            <button
+            <Link
               key={item.label}
+              href={item.href}
               className={cn(
                 "flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition",
-                item.active
+                isActive
                   ? "border-accent/30 bg-accent/10 text-foreground"
                   : "border-transparent bg-transparent text-secondary hover:border-border hover:bg-white/5 hover:text-foreground"
               )}
             >
               <Icon className="h-4 w-4" />
               <span>{item.label}</span>
-            </button>
+            </Link>
           );
         })}
       </nav>

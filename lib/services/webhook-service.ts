@@ -6,6 +6,23 @@ import { ensureDefaultPipeline } from "@/lib/repositories/pipeline-repository";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { webhookMessageSchema } from "@/lib/validations/webhook";
 
+type WebhookCandidate = {
+  key?: {
+    remoteJid?: string;
+    fromMe?: boolean;
+    participant?: string;
+    senderPn?: string;
+  };
+  remoteJid?: string;
+  senderPn?: string;
+  cleanedSenderPn?: string;
+  pushName?: string;
+  message?: Record<string, unknown>;
+  messageType?: string;
+  messageTimestamp?: string | number;
+  timestamp?: string | number;
+};
+
 function normalizePhone(raw: string) {
   return raw.replace(/\D/g, "");
 }
@@ -21,19 +38,66 @@ function extractMessageContent(message: Record<string, unknown> | undefined) {
   );
 }
 
+function extractPhoneFromCandidate(candidate: WebhookCandidate) {
+  const raw =
+    candidate.cleanedSenderPn ??
+    candidate.senderPn ??
+    candidate.key?.senderPn ??
+    candidate.key?.remoteJid ??
+    candidate.key?.participant ??
+    candidate.remoteJid;
+
+  if (!raw) return "";
+  return normalizePhone(raw.split("@")[0] ?? raw);
+}
+
+function normalizeWebhookMessage(payload: any): WebhookCandidate {
+  const candidates: WebhookCandidate[] = [];
+
+  if (payload?.data?.messages?.length) {
+    for (const message of payload.data.messages) {
+      candidates.push({
+        ...message,
+        pushName: message.pushName ?? payload.data.pushName ?? payload.pushName,
+        messageTimestamp:
+          message.messageTimestamp ?? payload.data.messageTimestamp ?? payload.messageTimestamp ?? payload.timestamp
+      });
+    }
+  }
+
+  if (payload?.data && (payload.data.key || payload.data.message)) {
+    candidates.push(payload.data);
+  }
+
+  if (payload?.key || payload?.message) {
+    candidates.push(payload);
+  }
+
+  const inboundCandidate =
+    candidates.find((candidate) => candidate?.key?.fromMe === false && extractPhoneFromCandidate(candidate)) ??
+    candidates.find((candidate) => candidate?.key?.fromMe !== true && extractPhoneFromCandidate(candidate));
+
+  if (!inboundCandidate) {
+    throw new Error("Nenhuma mensagem de entrada valida encontrada no payload");
+  }
+
+  return inboundCandidate;
+}
+
 export async function processWhatsappWebhook(payload: unknown) {
   await ensureDefaultPipeline();
   const parsed = webhookMessageSchema.parse(payload);
-  const remoteJid = parsed.data.key?.remoteJid ?? "";
-  const telefone = normalizePhone(remoteJid.split("@")[0] ?? "");
+  const inboundMessage = normalizeWebhookMessage(parsed);
+  const telefone = extractPhoneFromCandidate(inboundMessage);
 
   if (!telefone) throw new Error("Telefone nao encontrado no payload");
 
-  const timestamp = parsed.data.messageTimestamp
-    ? new Date(Number(parsed.data.messageTimestamp) * 1000).toISOString()
+  const rawTimestamp = inboundMessage.messageTimestamp ?? inboundMessage.timestamp;
+  const timestamp = rawTimestamp
+    ? new Date(Number(rawTimestamp) * 1000 || Number(rawTimestamp)).toISOString()
     : new Date().toISOString();
-  const nome = parsed.data.pushName?.trim() || `Lead ${telefone}`;
-  const conteudo = extractMessageContent(parsed.data.message);
+  const nome = inboundMessage.pushName?.trim() || `Lead ${telefone}`;
+  const conteudo = extractMessageContent(inboundMessage.message);
 
   let lead = await findLeadByPhone(telefone);
 
@@ -57,7 +121,7 @@ export async function processWhatsappWebhook(payload: unknown) {
     .eq("lead_id", lead.id)
     .maybeSingle();
 
-  const message = await createMessage({
+  const createdMessage = await createMessage({
     lead_id: lead.id,
     conteudo,
     tipo: "entrada",
@@ -79,6 +143,6 @@ export async function processWhatsappWebhook(payload: unknown) {
     ok: true,
     leadId: lead.id,
     cardColumn,
-    messageId: message.id
+    messageId: createdMessage.id
   };
 }
