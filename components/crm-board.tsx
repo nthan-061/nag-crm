@@ -3,7 +3,9 @@
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useEffect, useMemo, useState } from "react";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { ColumnManager } from "@/components/kanban/column-manager";
 import { KanbanColumn } from "@/components/kanban/kanban-column";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { REALTIME_CHANNEL } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -16,15 +18,22 @@ export function CrmBoard({
   initialColumns: Column[];
   initialCards: KanbanCardRecord[];
 }) {
-  const [columns] = useState(initialColumns);
+  const [columns, setColumns] = useState(initialColumns);
   const [cards, setCards] = useState(initialCards);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialCards[0]?.lead_id ?? null);
+  const [showColumnManager, setShowColumnManager] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   async function refreshCards() {
     const response = await fetch("/api/cards");
     const payload = (await response.json()) as { data: KanbanCardRecord[] };
     setCards(payload.data ?? []);
+  }
+
+  async function refreshColumns() {
+    const response = await fetch("/api/columns");
+    const payload = (await response.json()) as { data: Column[] };
+    setColumns(payload.data ?? []);
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -66,6 +75,14 @@ export function CrmBoard({
     };
   }, []);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void refreshCards();
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
   const groupedCards = useMemo(
     () =>
       columns.reduce<Record<string, KanbanCardRecord[]>>((acc, column) => {
@@ -82,11 +99,28 @@ export function CrmBoard({
       <div className="min-w-0">
         <div className="mb-4">
           <p className="text-xs uppercase tracking-[0.3em] text-accent">Pipeline em tempo real</p>
-          <h2 className="mt-2 text-3xl font-semibold text-foreground">Kanban comercial</h2>
-          <p className="mt-2 text-sm text-secondary">
-            Arraste cards entre etapas e acompanhe as conversas no painel lateral.
-          </p>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-3xl font-semibold text-foreground">Kanban comercial</h2>
+              <p className="mt-2 text-sm text-secondary">
+                Arraste cards entre etapas e acompanhe as conversas no painel lateral.
+              </p>
+            </div>
+            <Button variant="secondary" onClick={() => setShowColumnManager((current) => !current)}>
+              {showColumnManager ? "Fechar colunas" : "Editar colunas"}
+            </Button>
+          </div>
         </div>
+
+        {showColumnManager && (
+          <ColumnManager
+            columns={columns}
+            onUpdated={async () => {
+              await refreshColumns();
+              await refreshCards();
+            }}
+          />
+        )}
 
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <ScrollArea className="w-full">

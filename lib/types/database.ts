@@ -126,6 +126,12 @@ export type Column = Database["public"]["Tables"]["columns"]["Row"];
 export type Lead = Database["public"]["Tables"]["leads"]["Row"];
 export type Message = Database["public"]["Tables"]["messages"]["Row"];
 export type KanbanCardRecord = Database["public"]["Views"]["kanban_cards_view"]["Row"];
+export interface LeadNote {
+  id: string;
+  lead_id: string;
+  conteudo: string;
+  timestamp: string;
+}
 
 export interface DashboardData {
   pipelines: Pipeline[];

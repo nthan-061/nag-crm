@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { MessageCircleMore, PhoneCall } from "lucide-react";
 import { MessageInput } from "@/components/chat/message-input";
 import { MessageList } from "@/components/chat/message-list";
+import { NotesPanel } from "@/components/chat/notes-panel";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -14,6 +15,7 @@ import type { KanbanCardRecord, Message } from "@/lib/types/database";
 export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | null }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"chat" | "notes">("chat");
 
   const loadMessages = useCallback(async () => {
     if (!selectedCard?.lead_id) {
@@ -46,6 +48,19 @@ export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | n
     };
   }, [loadMessages, selectedCard?.lead_id]);
 
+  useEffect(() => {
+    if (!selectedCard?.lead_id) return;
+    const interval = window.setInterval(() => {
+      void loadMessages();
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [loadMessages, selectedCard?.lead_id]);
+
+  useEffect(() => {
+    setActiveTab("chat");
+  }, [selectedCard?.lead_id]);
+
   return (
     <Card className="flex h-full flex-col p-5">
       {selectedCard ? (
@@ -66,17 +81,41 @@ export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | n
 
           <Separator className="my-5" />
 
-          {isLoading ? (
+          <div className="mb-4 flex rounded-2xl border border-border bg-background/40 p-1">
+            <button
+              type="button"
+              className={`flex-1 rounded-xl px-3 py-2 text-sm transition ${
+                activeTab === "chat" ? "bg-accent text-white" : "text-secondary"
+              }`}
+              onClick={() => setActiveTab("chat")}
+            >
+              Conversa
+            </button>
+            <button
+              type="button"
+              className={`flex-1 rounded-xl px-3 py-2 text-sm transition ${
+                activeTab === "notes" ? "bg-accent text-white" : "text-secondary"
+              }`}
+              onClick={() => setActiveTab("notes")}
+            >
+              Anotacoes
+            </button>
+          </div>
+
+          {activeTab === "chat" && isLoading ? (
             <div className="flex flex-1 items-center justify-center text-sm text-secondary">
               Carregando mensagens...
             </div>
+          ) : activeTab === "chat" ? (
+            <>
+              <MessageList messages={messages} />
+              <div className="mt-5">
+                <MessageInput leadId={selectedCard.lead_id} onSent={loadMessages} />
+              </div>
+            </>
           ) : (
-            <MessageList messages={messages} />
+            <NotesPanel leadId={selectedCard.lead_id} />
           )}
-
-          <div className="mt-5">
-            <MessageInput leadId={selectedCard.lead_id} onSent={loadMessages} />
-          </div>
         </>
       ) : (
         <div className="flex h-full flex-col items-center justify-center text-center">

@@ -21,3 +21,9 @@ export async function createLead(input: { nome: string; telefone: string; origem
   if (error) throw error;
   return data as Lead;
 }
+
+export async function deleteLead(leadId: string) {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await (supabase.from("leads") as any).delete().eq("id", leadId);
+  if (error) throw error;
+}

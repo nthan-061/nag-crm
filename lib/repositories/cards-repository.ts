@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isLeadNote } from "@/lib/notes";
 import type { KanbanCardRecord } from "@/lib/types/database";
 
 export async function listCards() {
@@ -18,7 +19,7 @@ export async function listCards() {
   const latestMessageByLeadId = new Map<string, any>();
 
   for (const message of messages ?? []) {
-    if (!latestMessageByLeadId.has(message.lead_id)) {
+    if (!isLeadNote(message.conteudo) && !latestMessageByLeadId.has(message.lead_id)) {
       latestMessageByLeadId.set(message.lead_id, message);
     }
   }
