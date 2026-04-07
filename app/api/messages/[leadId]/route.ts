@@ -8,5 +8,5 @@ export async function GET(
   { params }: { params: { leadId: string } }
 ) {
   const messages = await getMessages(params.leadId);
-  return NextResponse.json({ data: messages });
+  return NextResponse.json({ data: messages }, { headers: { "Cache-Control": "no-store, max-age=0" } });
 }

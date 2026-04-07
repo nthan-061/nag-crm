@@ -24,6 +24,7 @@ export async function createLead(input: { nome: string; telefone: string; origem
 
 export async function deleteLead(leadId: string) {
   const supabase = createSupabaseAdminClient();
-  const { error } = await (supabase.from("leads") as any).delete().eq("id", leadId);
+  const { data, error } = await (supabase.from("leads") as any).delete().eq("id", leadId).select("id").maybeSingle();
   if (error) throw error;
+  return data as Pick<Lead, "id"> | null;
 }

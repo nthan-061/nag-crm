@@ -5,5 +5,5 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const cards = await getKanbanCards();
-  return NextResponse.json({ data: cards });
+  return NextResponse.json({ data: cards }, { headers: { "Cache-Control": "no-store, max-age=0" } });
 }
