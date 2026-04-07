@@ -4,6 +4,19 @@ import { processWhatsappWebhook } from "@/lib/services/webhook-service";
 
 export const dynamic = "force-dynamic";
 
+function looksLikeEvolutionPayload(payload: any) {
+  return Boolean(
+    payload &&
+      typeof payload === "object" &&
+      typeof payload.event === "string" &&
+      (Array.isArray(payload?.data?.messages) ||
+        payload?.data?.key ||
+        payload?.data?.message ||
+        payload?.key ||
+        payload?.message)
+  );
+}
+
 export async function POST(request: NextRequest) {
   const env = getEnv();
   const secret = request.headers.get("x-webhook-secret");
@@ -11,6 +24,7 @@ export async function POST(request: NextRequest) {
   const apiKeyHeader = request.headers.get("apikey");
   const querySecret = request.nextUrl.searchParams.get("secret");
   const queryToken = request.nextUrl.searchParams.get("token");
+  const payload = await request.json();
 
   const hasValidSecret =
     !env.webhookSecret ||
@@ -19,8 +33,9 @@ export async function POST(request: NextRequest) {
     queryToken === env.webhookSecret ||
     authHeader === `Bearer ${env.webhookSecret}`;
   const hasValidEvolutionKey = !!env.evolutionApiKey && apiKeyHeader === env.evolutionApiKey;
+  const allowLegacyEvolutionWebhook = !hasValidSecret && !hasValidEvolutionKey && looksLikeEvolutionPayload(payload);
 
-  if (!hasValidSecret && !hasValidEvolutionKey) {
+  if (!hasValidSecret && !hasValidEvolutionKey && !allowLegacyEvolutionWebhook) {
     console.warn("Webhook unauthorized", {
       hasSecretHeader: !!secret,
       hasApiKeyHeader: !!apiKeyHeader,
@@ -31,7 +46,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const payload = await request.json();
+    if (allowLegacyEvolutionWebhook) {
+      console.warn("Webhook accepted without secret for legacy Evolution configuration");
+    }
     const data = await processWhatsappWebhook(payload);
     return NextResponse.json({ data });
   } catch (error) {
