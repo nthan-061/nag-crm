@@ -6,6 +6,7 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { ColumnManager } from "@/components/kanban/column-manager";
 import { KanbanColumn } from "@/components/kanban/kanban-column";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { REALTIME_CHANNEL } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -22,6 +23,7 @@ export function CrmBoard({
   const [cards, setCards] = useState(initialCards);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialCards[0]?.lead_id ?? null);
   const [showColumnManager, setShowColumnManager] = useState(false);
+  const [search, setSearch] = useState("");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   async function refreshCards() {
@@ -86,10 +88,21 @@ export function CrmBoard({
   const groupedCards = useMemo(
     () =>
       columns.reduce<Record<string, KanbanCardRecord[]>>((acc, column) => {
-        acc[column.id] = cards.filter((card) => card.coluna_id === column.id);
+        const normalizedSearch = search.trim().toLowerCase();
+        acc[column.id] = cards.filter((card) => {
+          const matchesColumn = card.coluna_id === column.id;
+          if (!matchesColumn) return false;
+          if (!normalizedSearch) return true;
+
+          return (
+            card.lead_nome.toLowerCase().includes(normalizedSearch) ||
+            card.lead_telefone.includes(normalizedSearch) ||
+            (card.ultima_mensagem ?? "").toLowerCase().includes(normalizedSearch)
+          );
+        });
         return acc;
       }, {}),
-    [cards, columns]
+    [cards, columns, search]
   );
 
   const selectedCard = cards.find((card) => card.lead_id === selectedLeadId) ?? null;
@@ -106,9 +119,18 @@ export function CrmBoard({
                 Arraste cards entre etapas e acompanhe as conversas no painel lateral.
               </p>
             </div>
-            <Button variant="secondary" onClick={() => setShowColumnManager((current) => !current)}>
-              {showColumnManager ? "Fechar colunas" : "Editar colunas"}
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="w-[280px]">
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar lead, telefone ou mensagem"
+                />
+              </div>
+              <Button variant="secondary" onClick={() => setShowColumnManager((current) => !current)}>
+                {showColumnManager ? "Fechar colunas" : "Editar colunas"}
+              </Button>
+            </div>
           </div>
         </div>
 

@@ -48,6 +48,10 @@ export function ColumnManager({
   }
 
   function handleDelete(id: string) {
+    if (!window.confirm("Tem certeza que deseja apagar esta coluna? Ela precisa estar vazia para ser removida.")) {
+      return;
+    }
+
     startTransition(() => {
       void (async () => {
         await fetch(`/api/columns/${id}`, { method: "DELETE" });

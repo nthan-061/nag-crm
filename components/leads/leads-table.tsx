@@ -11,6 +11,10 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
   const [isPending, startTransition] = useTransition();
 
   function handleDelete(leadId: string) {
+    if (!window.confirm("Tem certeza que deseja apagar este lead? Esta acao remove card e mensagens relacionadas.")) {
+      return;
+    }
+
     startTransition(() => {
       void (async () => {
         await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
