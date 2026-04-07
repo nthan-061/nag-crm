@@ -8,24 +8,44 @@ export async function getMessages(leadId: string) {
   return listMessagesByLead(leadId);
 }
 
+async function resolveEvolutionInstanceName() {
+  const env = getEnv();
+  if (!env.evolutionApiUrl || !env.evolutionApiKey || !env.evolutionInstance) {
+    return null;
+  }
+
+  const response = await fetch(`${env.evolutionApiUrl}/instance/fetchInstances`, {
+    headers: {
+      apikey: env.evolutionApiKey
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error("Nao foi possivel consultar as instancias da Evolution");
+  }
+
+  const instances = (await response.json()) as Array<{
+    id?: string;
+    name?: string;
+    token?: string;
+  }>;
+
+  const normalized = env.evolutionInstance;
+  const matched =
+    instances.find((instance) => instance.name === normalized) ??
+    instances.find((instance) => instance.token === normalized) ??
+    instances.find((instance) => instance.id === normalized);
+
+  return matched?.name ?? normalized;
+}
+
 export async function sendMessage(payload: unknown) {
   const parsed = sendMessageSchema.parse(payload);
   const timestamp = new Date().toISOString();
 
-  const message = await createMessage({
-    lead_id: parsed.leadId,
-    conteudo: parsed.content,
-    tipo: "saida",
-    timestamp
-  });
-
   const supabase = createSupabaseAdminClient();
   const { data: card } = await (supabase.from("cards") as any).select("id").eq("lead_id", parsed.leadId).maybeSingle();
-
-  if ((card as unknown as { id: string } | null)?.id) {
-    await touchCard((card as unknown as { id: string }).id, timestamp);
-  }
-
   const env = getEnv();
   const { data: lead } = await (supabase.from("leads") as any)
     .select("telefone")
@@ -38,7 +58,8 @@ export async function sendMessage(payload: unknown) {
     env.evolutionApiKey &&
     env.evolutionInstance
   ) {
-    await fetch(`${env.evolutionApiUrl}/message/sendText/${env.evolutionInstance}`, {
+    const instanceName = await resolveEvolutionInstanceName();
+    const response = await fetch(`${env.evolutionApiUrl}/message/sendText/${encodeURIComponent(instanceName ?? env.evolutionInstance)}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -48,7 +69,22 @@ export async function sendMessage(payload: unknown) {
         number: (lead as unknown as { telefone: string }).telefone,
         text: parsed.content
       })
-    }).catch(() => null);
+    });
+
+    if (!response.ok) {
+      throw new Error("Falha ao enviar mensagem pela Evolution");
+    }
+  }
+
+  const message = await createMessage({
+    lead_id: parsed.leadId,
+    conteudo: parsed.content,
+    tipo: "saida",
+    timestamp
+  });
+
+  if ((card as unknown as { id: string } | null)?.id) {
+    await touchCard((card as unknown as { id: string }).id, timestamp);
   }
 
   return message;

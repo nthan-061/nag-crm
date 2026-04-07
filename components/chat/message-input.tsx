@@ -20,11 +20,19 @@ export function MessageInput({
 
     startTransition(() => {
       void (async () => {
-        await fetch("/api/messages/send", {
+        const response = await fetch("/api/messages/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ leadId, content: value })
         });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({ error: "Falha ao enviar mensagem" }))) as {
+            error?: string;
+          };
+          window.alert(payload.error ?? "Falha ao enviar mensagem");
+          return;
+        }
 
         setValue("");
         await onSent();

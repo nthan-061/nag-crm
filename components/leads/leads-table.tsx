@@ -17,7 +17,11 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
 
     startTransition(() => {
       void (async () => {
-        await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
+        const response = await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
+        if (!response.ok) {
+          window.alert("Nao foi possivel apagar o lead.");
+          return;
+        }
         setLeads((current) => current.filter((lead) => lead.id !== leadId));
       })();
     });

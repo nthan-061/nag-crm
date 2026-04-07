@@ -54,7 +54,14 @@ export function ColumnManager({
 
     startTransition(() => {
       void (async () => {
-        await fetch(`/api/columns/${id}`, { method: "DELETE" });
+        const response = await fetch(`/api/columns/${id}`, { method: "DELETE" });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({ error: "Nao foi possivel apagar a coluna." }))) as {
+            error?: string;
+          };
+          window.alert(payload.error ?? "Nao foi possivel apagar a coluna.");
+          return;
+        }
         await onUpdated();
       })();
     });
