@@ -132,7 +132,7 @@ export async function processWhatsappWebhook(payload: unknown) {
       const telefone = extractPhoneFromCandidate(outboundMessage);
       if (telefone) {
         const lead = await findLeadByPhone(telefone);
-        if (lead) {
+        if (lead && !lead.deleted_at) {
           const rawTimestamp = outboundMessage.messageTimestamp ?? outboundMessage.timestamp;
           const timestamp = rawTimestamp
             ? new Date(Number(rawTimestamp) * 1000 || Number(rawTimestamp)).toISOString()
@@ -176,6 +176,11 @@ export async function processWhatsappWebhook(payload: unknown) {
   const externalId = extractMessageId(inboundMessage);
 
   let lead = await findLeadByPhone(telefone);
+
+  // Lead was intentionally deleted — do not recreate it from incoming messages
+  if (lead?.deleted_at) {
+    return { ok: true, skipped: true, reason: "lead_deleted" };
+  }
 
   if (!lead) {
     try {

@@ -7,27 +7,12 @@ import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types/database";
 
 export function MessageList({ messages, leadId }: { messages: Message[]; leadId: string | null }) {
-  const bottomRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const prevLeadIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container || messages.length === 0) return;
-
-    const leadChanged = prevLeadIdRef.current !== leadId;
-    prevLeadIdRef.current = leadId;
-
-    if (leadChanged) {
-      // Hard scroll to bottom on lead switch — no animation to avoid flicker
-      container.scrollTop = container.scrollHeight;
-    } else {
-      // Stick to bottom only if already near bottom (user hasn't scrolled up)
-      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-      if (distanceFromBottom < 80) {
-        bottomRef.current?.scrollIntoView({ block: "end" });
-      }
-    }
+    container.scrollTop = container.scrollHeight;
   }, [messages, leadId]);
 
   return (
@@ -48,7 +33,6 @@ export function MessageList({ messages, leadId }: { messages: Message[]; leadId:
           </div>
         ))}
       </div>
-      <div ref={bottomRef} />
     </div>
   );
 }

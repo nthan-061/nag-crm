@@ -28,9 +28,9 @@ export interface Database {
         Relationships: [];
       };
       leads: {
-        Row: { id: string; nome: string; telefone: string; origem: string | null; criado_em: string };
-        Insert: { id?: string; nome: string; telefone: string; origem?: string | null; criado_em?: string };
-        Update: { nome?: string; telefone?: string; origem?: string | null };
+        Row: { id: string; nome: string; telefone: string; origem: string | null; criado_em: string; deleted_at: string | null };
+        Insert: { id?: string; nome: string; telefone: string; origem?: string | null; criado_em?: string; deleted_at?: string | null };
+        Update: { nome?: string; telefone?: string; origem?: string | null; deleted_at?: string | null };
         Relationships: [];
       };
       messages: {

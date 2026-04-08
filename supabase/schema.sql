@@ -22,7 +22,8 @@ create table if not exists public.leads (
   nome text not null,
   telefone text not null unique,
   origem text,
-  criado_em timestamptz not null default timezone('utc', now())
+  criado_em timestamptz not null default timezone('utc', now()),
+  deleted_at timestamptz
 );
 
 create table if not exists public.cards (
@@ -79,7 +80,8 @@ select
     limit 1
   ) as ultima_mensagem
 from public.cards c
-inner join public.leads l on l.id = c.lead_id;
+inner join public.leads l on l.id = c.lead_id
+where l.deleted_at is null;
 
 create or replace function public.move_card(
   p_card_id uuid,
