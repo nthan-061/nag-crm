@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { getEnv } from "@/lib/env";
 import { processWhatsappWebhook } from "@/lib/services/webhook-service";
 
@@ -40,6 +41,10 @@ export async function POST(request: NextRequest) {
     const data = await processWhatsappWebhook(payload);
     return NextResponse.json({ data });
   } catch (error) {
+    if (error instanceof ZodError) {
+      console.warn("Webhook payload validation failed", error.issues);
+      return NextResponse.json({ error: "Invalid payload" }, { status: 422 });
+    }
     console.error("Webhook processing failed", error);
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }

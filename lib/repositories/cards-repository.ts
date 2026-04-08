@@ -24,25 +24,18 @@ export async function createCard(input: {
   return data;
 }
 
-export async function updateCardPosition(input: { cardId: string; fromColumnId?: string | null; toColumnId: string }) {
+export async function updateCardPosition(input: {
+  cardId: string;
+  fromColumnId?: string | null;
+  toColumnId: string;
+}): Promise<void> {
   const supabase = createSupabaseAdminClient();
-  const { data: card, error: updateError } = await supabase
-    .from("cards")
-    .update({ coluna_id: input.toColumnId, ultima_interacao: new Date().toISOString() })
-    .eq("id", input.cardId)
-    .select("*")
-    .single();
-
-  if (updateError) throw updateError;
-
-  const { error: movementError } = await supabase.from("movements").insert({
-    card_id: input.cardId,
-    de_coluna: input.fromColumnId ?? null,
-    para_coluna: input.toColumnId
+  const { error } = await supabase.rpc("move_card", {
+    p_card_id: input.cardId,
+    p_from_column: input.fromColumnId ?? null,
+    p_to_column: input.toColumnId
   });
-
-  if (movementError) throw movementError;
-  return card;
+  if (error) throw error;
 }
 
 export async function touchCard(cardId: string, timestamp: string) {

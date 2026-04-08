@@ -84,7 +84,7 @@ export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | n
     if (!selectedCard?.lead_id) return;
     const interval = window.setInterval(() => {
       void loadMessages({ silent: true });
-    }, 15000);
+    }, 60000);
 
     return () => window.clearInterval(interval);
   }, [loadMessages, selectedCard?.lead_id]);

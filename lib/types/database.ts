@@ -117,7 +117,16 @@ export interface Database {
         Relationships: [];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      move_card: {
+        Args: {
+          p_card_id: string;
+          p_from_column: string | null;
+          p_to_column: string;
+        };
+        Returns: undefined;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

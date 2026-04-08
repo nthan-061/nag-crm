@@ -40,7 +40,8 @@ create table if not exists public.messages (
   lead_id uuid not null references public.leads(id) on delete cascade,
   conteudo text not null,
   tipo text not null check (tipo in ('entrada', 'saida')),
-  timestamp timestamptz not null default timezone('utc', now())
+  timestamp timestamptz not null default timezone('utc', now()),
+  external_id text
 );
 
 create table if not exists public.movements (
@@ -55,6 +56,7 @@ create index if not exists idx_leads_telefone on public.leads (telefone);
 create index if not exists idx_cards_coluna_id on public.cards (coluna_id);
 create index if not exists idx_messages_lead_id_timestamp on public.messages (lead_id, "timestamp" desc);
 create index if not exists idx_movements_card_id on public.movements (card_id, "timestamp" desc);
+create unique index if not exists idx_messages_external_id on public.messages (external_id) where external_id is not null;
 
 create or replace view public.kanban_cards_view as
 select
@@ -78,6 +80,24 @@ select
   ) as ultima_mensagem
 from public.cards c
 inner join public.leads l on l.id = c.lead_id;
+
+create or replace function public.move_card(
+  p_card_id uuid,
+  p_from_column uuid,
+  p_to_column uuid
+) returns void
+language plpgsql
+security definer
+as $$
+begin
+  update public.cards
+    set coluna_id = p_to_column, ultima_interacao = now()
+    where id = p_card_id;
+
+  insert into public.movements (card_id, de_coluna, para_coluna)
+    values (p_card_id, p_from_column, p_to_column);
+end;
+$$;
 
 alter table public.pipelines enable row level security;
 alter table public.columns enable row level security;

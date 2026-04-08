@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -23,6 +23,17 @@ export function ColumnManager({
   );
   const [newColumn, setNewColumn] = useState({ nome: "", cor: "#3B82F6" });
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDrafts(
+      columns.map((column) => ({
+        id: column.id,
+        nome: column.nome,
+        cor: column.cor ?? "#3B82F6"
+      }))
+    );
+  }, [columns]);
 
   function updateDraft(id: string, key: "nome" | "cor", value: string) {
     setDrafts((current) => current.map((draft) => (draft.id === id ? { ...draft, [key]: value } : draft)));
@@ -32,16 +43,19 @@ export function ColumnManager({
     const draft = drafts.find((item) => item.id === id);
     if (!draft) return;
 
+    setError(null);
     startTransition(() => {
       void (async () => {
-        await fetch(`/api/columns/${id}`, {
+        const response = await fetch(`/api/columns/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nome: draft.nome,
-            cor: draft.cor
-          })
+          body: JSON.stringify({ nome: draft.nome, cor: draft.cor })
         });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({}))) as { error?: string };
+          setError(payload.error ?? "Nao foi possivel salvar a coluna.");
+          return;
+        }
         await onUpdated();
       })();
     });
@@ -52,6 +66,7 @@ export function ColumnManager({
       return;
     }
 
+    setError(null);
     startTransition(() => {
       void (async () => {
         const response = await fetch(`/api/columns/${id}`, { method: "DELETE" });
@@ -59,7 +74,7 @@ export function ColumnManager({
           const payload = (await response.json().catch(() => ({ error: "Nao foi possivel apagar a coluna." }))) as {
             error?: string;
           };
-          window.alert(payload.error ?? "Nao foi possivel apagar a coluna.");
+          setError(payload.error ?? "Nao foi possivel apagar a coluna.");
           return;
         }
         await onUpdated();
@@ -70,13 +85,19 @@ export function ColumnManager({
   function handleCreate() {
     if (!newColumn.nome.trim()) return;
 
+    setError(null);
     startTransition(() => {
       void (async () => {
-        await fetch("/api/columns", {
+        const response = await fetch("/api/columns", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(newColumn)
         });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({}))) as { error?: string };
+          setError(payload.error ?? "Nao foi possivel criar a coluna.");
+          return;
+        }
         setNewColumn({ nome: "", cor: "#3B82F6" });
         await onUpdated();
       })();
@@ -91,6 +112,10 @@ export function ColumnManager({
           <h3 className="mt-1 text-lg font-semibold text-foreground">Editar pipeline</h3>
         </div>
       </div>
+
+      {error && (
+        <p className="mb-3 rounded-xl border border-danger/20 bg-danger/10 px-4 py-2 text-sm text-danger">{error}</p>
+      )}
 
       <div className="space-y-3">
         {drafts.map((draft) => (

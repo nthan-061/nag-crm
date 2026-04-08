@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { addLeadNote, getLeadNotes } from "@/lib/services/notes-service";
+import { noteContentSchema } from "@/lib/validations/notes";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +18,14 @@ export async function GET(
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { leadId: string } }
+) {
   try {
-    const payload = await request.json();
-    const data = await addLeadNote(payload);
+    const body = await request.json();
+    const { content } = noteContentSchema.parse(body);
+    const data = await addLeadNote(params.leadId, content);
     return NextResponse.json({ data });
   } catch (error) {
     if (error instanceof ZodError) {

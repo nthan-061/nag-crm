@@ -11,11 +11,17 @@ export function NotesPanel({ leadId }: { leadId: string }) {
   const [notes, setNotes] = useState<LeadNote[]>([]);
   const [value, setValue] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   const loadNotes = useCallback(async () => {
-    const response = await fetch(`/api/notes/${leadId}`);
-    const payload = (await response.json()) as { data: LeadNote[] };
-    setNotes(payload.data ?? []);
+    try {
+      const response = await fetch(`/api/notes/${leadId}`);
+      if (!response.ok) return;
+      const payload = (await response.json()) as { data: LeadNote[] };
+      setNotes(payload.data ?? []);
+    } catch {
+      // Keep current notes visible if load fails
+    }
   }, [leadId]);
 
   useEffect(() => {
@@ -24,14 +30,21 @@ export function NotesPanel({ leadId }: { leadId: string }) {
 
   function handleSave() {
     if (!value.trim()) return;
+    const savedValue = value;
 
+    setError(null);
     startTransition(() => {
       void (async () => {
-        await fetch(`/api/notes/${leadId}`, {
+        const response = await fetch(`/api/notes/${leadId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leadId, content: value })
+          body: JSON.stringify({ leadId, content: savedValue })
         });
+        if (!response.ok) {
+          setValue(savedValue);
+          setError("Nao foi possivel salvar a anotacao. Tente novamente.");
+          return;
+        }
         setValue("");
         await loadNotes();
       })();
@@ -39,9 +52,14 @@ export function NotesPanel({ leadId }: { leadId: string }) {
   }
 
   function handleDelete(noteId: string) {
+    setError(null);
     startTransition(() => {
       void (async () => {
-        await fetch(`/api/notes/item/${noteId}`, { method: "DELETE" });
+        const response = await fetch(`/api/notes/item/${noteId}`, { method: "DELETE" });
+        if (!response.ok) {
+          setError("Nao foi possivel remover a anotacao.");
+          return;
+        }
         await loadNotes();
       })();
     });
@@ -51,6 +69,9 @@ export function NotesPanel({ leadId }: { leadId: string }) {
     <div className="flex h-full flex-col">
       <ScrollArea className="h-[calc(100vh-360px)]">
         <div className="space-y-3 pr-4">
+          {error && (
+            <p className="rounded-xl border border-danger/20 bg-danger/10 px-4 py-2 text-sm text-danger">{error}</p>
+          )}
           {notes.map((note) => (
             <div key={note.id} className="rounded-2xl border border-border bg-background/40 p-4">
               <div className="flex items-start justify-between gap-3">
@@ -68,7 +89,9 @@ export function NotesPanel({ leadId }: { leadId: string }) {
               </p>
             </div>
           ))}
-          {notes.length === 0 && <p className="text-sm text-secondary">Nenhuma anotacao ainda.</p>}
+          {notes.length === 0 && !error && (
+            <p className="text-sm text-secondary">Nenhuma anotacao ainda.</p>
+          )}
         </div>
       </ScrollArea>
 
