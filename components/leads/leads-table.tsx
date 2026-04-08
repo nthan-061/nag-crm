@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,29 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
   const [leads, setLeads] = useState(initialLeads);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  async function syncLeads() {
+    try {
+      const response = await fetch("/api/leads", {
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as { data?: Lead[] };
+      if (Array.isArray(payload.data)) {
+        setLeads(payload.data);
+      }
+    } catch {
+      // Keep the current table visible if background sync fails.
+    }
+  }
+
+  useEffect(() => {
+    void syncLeads();
+  }, []);
 
   function handleDelete(leadId: string) {
     if (!window.confirm("Tem certeza que deseja apagar este lead? Esta acao remove card e mensagens relacionadas.")) {
@@ -28,11 +51,14 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
           const payload = (await response.json().catch(() => ({ error: "Nao foi possivel apagar o lead." }))) as {
             error?: string;
           };
+          await syncLeads();
+          router.refresh();
           window.alert(payload.error ?? "Nao foi possivel apagar o lead.");
           return;
         }
 
         setLeads((current) => current.filter((lead) => lead.id !== leadId));
+        await syncLeads();
         router.refresh();
       })();
     });
