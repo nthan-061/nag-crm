@@ -40,6 +40,7 @@ export interface Database {
           conteudo: string;
           tipo: "entrada" | "saida";
           timestamp: string;
+          external_id: string | null;
         };
         Insert: {
           id?: string;
@@ -47,8 +48,9 @@ export interface Database {
           conteudo: string;
           tipo: "entrada" | "saida";
           timestamp?: string;
+          external_id?: string | null;
         };
-        Update: { conteudo?: string; tipo?: "entrada" | "saida"; timestamp?: string };
+        Update: { conteudo?: string; tipo?: "entrada" | "saida"; timestamp?: string; external_id?: string | null };
         Relationships: [];
       };
       cards: {

@@ -10,6 +10,7 @@ type WebhookCandidate = {
   key?: {
     remoteJid?: string;
     fromMe?: boolean;
+    id?: string;
     participant?: string;
     senderPn?: string;
   };
@@ -36,6 +37,10 @@ function extractMessageContent(message: Record<string, unknown> | undefined) {
     ((message.imageMessage as { caption?: string } | undefined)?.caption ?? undefined) ??
     "Mensagem recebida"
   );
+}
+
+function extractMessageId(candidate: WebhookCandidate): string | undefined {
+  return candidate.key?.id ?? undefined;
 }
 
 function extractPhoneFromCandidate(candidate: WebhookCandidate) {
@@ -98,18 +103,24 @@ export async function processWhatsappWebhook(payload: unknown) {
     : new Date().toISOString();
   const nome = inboundMessage.pushName?.trim() || `Lead ${telefone}`;
   const conteudo = extractMessageContent(inboundMessage.message);
+  const externalId = extractMessageId(inboundMessage);
 
   let lead = await findLeadByPhone(telefone);
 
   if (!lead) {
-    lead = await createLead({ nome, telefone, origem: "whatsapp" });
-    const entryColumnId = await getEntryColumnId();
-    await createCard({
-      lead_id: lead.id,
-      coluna_id: entryColumnId,
-      prioridade: "media",
-      ultima_interacao: timestamp
-    });
+    try {
+      lead = await createLead({ nome, telefone, origem: "whatsapp" });
+      const entryColumnId = await getEntryColumnId();
+      await createCard({
+        lead_id: lead.id,
+        coluna_id: entryColumnId,
+        prioridade: "media",
+        ultima_interacao: timestamp
+      });
+    } catch {
+      // Race condition: outro webhook criou o lead ao mesmo tempo
+      lead = await findLeadByPhone(telefone);
+    }
   }
 
   if (!lead) throw new Error("Falha ao criar ou localizar lead");
@@ -125,8 +136,14 @@ export async function processWhatsappWebhook(payload: unknown) {
     lead_id: lead.id,
     conteudo,
     tipo: "entrada",
-    timestamp
+    timestamp,
+    external_id: externalId
   });
+
+  if (!createdMessage) {
+    // Mensagem duplicada — retornar 200 para Evolution parar de retentar
+    return { ok: true, leadId: lead.id, duplicate: true };
+  }
 
   if ((card as unknown as { id: string } | null)?.id) {
     await touchCard((card as unknown as { id: string }).id, timestamp);

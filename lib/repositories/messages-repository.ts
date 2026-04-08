@@ -18,11 +18,15 @@ export async function createMessage(input: {
   conteudo: string;
   tipo: "entrada" | "saida";
   timestamp?: string;
-}) {
+  external_id?: string;
+}): Promise<Message | null> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await (supabase.from("messages") as any).insert(input).select("*").single();
+  const { data, error } = await (supabase.from("messages") as any)
+    .upsert(input, { onConflict: "external_id", ignoreDuplicates: true })
+    .select("*")
+    .maybeSingle();
   if (error) throw error;
-  return data as Message;
+  return data as Message | null;
 }
 
 export async function listNotesByLead(leadId: string) {
@@ -54,6 +58,8 @@ export async function createLeadNote(input: { lead_id: string; conteudo: string 
     tipo: "saida",
     timestamp: new Date().toISOString()
   });
+
+  if (!note) throw new Error("Falha ao criar nota");
 
   return {
     id: note.id,
