@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageCircleMore, PhoneCall } from "lucide-react";
 import { MessageInput } from "@/components/chat/message-input";
 import { MessageList } from "@/components/chat/message-list";
@@ -16,25 +16,55 @@ export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | n
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "notes">("chat");
+  const latestRequestId = useRef(0);
 
-  const loadMessages = useCallback(async () => {
+  const loadMessages = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!selectedCard?.lead_id) {
       setMessages([]);
+      setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
-    const response = await fetch(`/api/messages/${selectedCard.lead_id}`, {
-      cache: "no-store"
-    });
-    const payload = (await response.json()) as { data: Message[] };
-    setMessages(payload.data ?? []);
-    setIsLoading(false);
+    const requestId = ++latestRequestId.current;
+
+    if (!silent) {
+      setIsLoading(true);
+    }
+
+    try {
+      const response = await fetch(`/api/messages/${selectedCard.lead_id}`, {
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as { data?: Message[] };
+      if (requestId !== latestRequestId.current || !Array.isArray(payload.data)) {
+        return;
+      }
+
+      setMessages(payload.data);
+    } finally {
+      if (!silent && requestId === latestRequestId.current) {
+        setIsLoading(false);
+      }
+    }
   }, [selectedCard?.lead_id]);
 
   useEffect(() => {
+    setActiveTab("chat");
+
+    if (!selectedCard?.lead_id) {
+      setMessages([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setMessages([]);
     void loadMessages();
-  }, [loadMessages]);
+  }, [loadMessages, selectedCard?.lead_id]);
 
   useEffect(() => {
     if (!selectedCard?.lead_id) return;
@@ -42,7 +72,7 @@ export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | n
     const supabase = createSupabaseBrowserClient();
     const channel = supabase
       .channel(`${REALTIME_CHANNEL}-chat-${selectedCard.lead_id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => void loadMessages())
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => void loadMessages({ silent: true }))
       .subscribe();
 
     return () => {
@@ -53,15 +83,11 @@ export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | n
   useEffect(() => {
     if (!selectedCard?.lead_id) return;
     const interval = window.setInterval(() => {
-      void loadMessages();
-    }, 5000);
+      void loadMessages({ silent: true });
+    }, 15000);
 
     return () => window.clearInterval(interval);
   }, [loadMessages, selectedCard?.lead_id]);
-
-  useEffect(() => {
-    setActiveTab("chat");
-  }, [selectedCard?.lead_id]);
 
   return (
     <Card className="flex h-full flex-col p-5">
@@ -104,7 +130,7 @@ export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | n
             </button>
           </div>
 
-          {activeTab === "chat" && isLoading ? (
+          {activeTab === "chat" && isLoading && messages.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-sm text-secondary">
               Carregando mensagens...
             </div>
