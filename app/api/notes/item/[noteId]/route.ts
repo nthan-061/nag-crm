@@ -7,6 +7,11 @@ export async function DELETE(
   _: Request,
   { params }: { params: { noteId: string } }
 ) {
-  await removeLeadNote(params.noteId);
-  return NextResponse.json({ ok: true });
+  try {
+    await removeLeadNote(params.noteId);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Delete note failed", error);
+    return NextResponse.json({ error: "Falha ao remover anotacao" }, { status: 500 });
+  }
 }

@@ -2,15 +2,15 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { decodeLeadNote, encodeLeadNote, isLeadNote } from "@/lib/notes";
 import type { LeadNote, Message } from "@/lib/types/database";
 
-export async function listMessagesByLead(leadId: string) {
+export async function listMessagesByLead(leadId: string): Promise<Message[]> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await (supabase
-    .from("messages") as any)
+  const { data, error } = await supabase
+    .from("messages")
     .select("*")
     .eq("lead_id", leadId)
     .order("timestamp", { ascending: true });
   if (error) throw error;
-  return ((data ?? []) as Message[]).filter((message) => !isLeadNote(message.conteudo));
+  return (data ?? []).filter((message) => !isLeadNote(message.conteudo));
 }
 
 export async function createMessage(input: {
@@ -21,37 +21,36 @@ export async function createMessage(input: {
   external_id?: string;
 }): Promise<Message | null> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await (supabase.from("messages") as any)
+  const { data, error } = await supabase
+    .from("messages")
     .upsert(input, { onConflict: "external_id", ignoreDuplicates: true })
     .select("*")
     .maybeSingle();
   if (error) throw error;
-  return data as Message | null;
+  return data;
 }
 
-export async function listNotesByLead(leadId: string) {
+export async function listNotesByLead(leadId: string): Promise<LeadNote[]> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await (supabase.from("messages") as any)
+  const { data, error } = await supabase
+    .from("messages")
     .select("*")
     .eq("lead_id", leadId)
     .order("timestamp", { ascending: false });
 
   if (error) throw error;
 
-  return ((data ?? []) as Message[])
+  return (data ?? [])
     .filter((message) => isLeadNote(message.conteudo))
-    .map(
-      (message) =>
-        ({
-          id: message.id,
-          lead_id: message.lead_id,
-          conteudo: decodeLeadNote(message.conteudo),
-          timestamp: message.timestamp
-        }) satisfies LeadNote
-    );
+    .map((message) => ({
+      id: message.id,
+      lead_id: message.lead_id,
+      conteudo: decodeLeadNote(message.conteudo),
+      timestamp: message.timestamp
+    }));
 }
 
-export async function createLeadNote(input: { lead_id: string; conteudo: string }) {
+export async function createLeadNote(input: { lead_id: string; conteudo: string }): Promise<LeadNote> {
   const note = await createMessage({
     lead_id: input.lead_id,
     conteudo: encodeLeadNote(input.conteudo),
@@ -66,11 +65,11 @@ export async function createLeadNote(input: { lead_id: string; conteudo: string 
     lead_id: note.lead_id,
     conteudo: input.conteudo,
     timestamp: note.timestamp
-  } satisfies LeadNote;
+  };
 }
 
-export async function deleteLeadNote(noteId: string) {
+export async function deleteLeadNote(noteId: string): Promise<void> {
   const supabase = createSupabaseAdminClient();
-  const { error } = await (supabase.from("messages") as any).delete().eq("id", noteId);
+  const { error } = await supabase.from("messages").delete().eq("id", noteId);
   if (error) throw error;
 }

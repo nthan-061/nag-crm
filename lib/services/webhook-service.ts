@@ -4,7 +4,7 @@ import { createLead, findLeadByPhone } from "@/lib/repositories/leads-repository
 import { createMessage } from "@/lib/repositories/messages-repository";
 import { ensureDefaultPipeline } from "@/lib/repositories/pipeline-repository";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { webhookMessageSchema } from "@/lib/validations/webhook";
+import { webhookMessageSchema, type WebhookMessage } from "@/lib/validations/webhook";
 
 type WebhookCandidate = {
   key?: {
@@ -56,7 +56,7 @@ function extractPhoneFromCandidate(candidate: WebhookCandidate) {
   return normalizePhone(raw.split("@")[0] ?? raw);
 }
 
-function normalizeWebhookMessage(payload: any): WebhookCandidate {
+function normalizeWebhookMessage(payload: WebhookMessage): WebhookCandidate {
   const candidates: WebhookCandidate[] = [];
 
   if (payload?.data?.messages?.length) {
@@ -126,8 +126,8 @@ export async function processWhatsappWebhook(payload: unknown) {
   if (!lead) throw new Error("Falha ao criar ou localizar lead");
 
   const supabase = createSupabaseAdminClient();
-  const { data: card } = await (supabase
-    .from("cards") as any)
+  const { data: card } = await supabase
+    .from("cards")
     .select("id, coluna_id")
     .eq("lead_id", lead.id)
     .maybeSingle();
@@ -145,15 +145,18 @@ export async function processWhatsappWebhook(payload: unknown) {
     return { ok: true, leadId: lead.id, duplicate: true };
   }
 
-  if ((card as unknown as { id: string } | null)?.id) {
-    await touchCard((card as unknown as { id: string }).id, timestamp);
+  if (card?.id) {
+    await touchCard(card.id, timestamp);
   }
 
   let cardColumn = DEFAULT_ENTRY_COLUMN;
-  const colunaId = (card as unknown as { coluna_id?: string } | null)?.coluna_id;
-  if (colunaId) {
-    const { data: column } = await (supabase.from("columns") as any).select("nome").eq("id", colunaId).maybeSingle();
-    cardColumn = (column as unknown as { nome?: string } | null)?.nome ?? DEFAULT_ENTRY_COLUMN;
+  if (card?.coluna_id) {
+    const { data: column } = await supabase
+      .from("columns")
+      .select("nome")
+      .eq("id", card.coluna_id)
+      .maybeSingle();
+    cardColumn = column?.nome ?? DEFAULT_ENTRY_COLUMN;
   }
 
   return {

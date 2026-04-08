@@ -72,6 +72,7 @@ select
     select m.conteudo
     from public.messages m
     where m.lead_id = l.id
+      and m.conteudo not like '[[NOTE]]%'
     order by m.timestamp desc
     limit 1
   ) as ultima_mensagem

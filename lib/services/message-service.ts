@@ -45,31 +45,26 @@ export async function sendMessage(payload: unknown) {
   const timestamp = new Date().toISOString();
 
   const supabase = createSupabaseAdminClient();
-  const { data: card } = await (supabase.from("cards") as any).select("id").eq("lead_id", parsed.leadId).maybeSingle();
+  const { data: card } = await supabase.from("cards").select("id").eq("lead_id", parsed.leadId).maybeSingle();
   const env = getEnv();
-  const { data: lead } = await (supabase.from("leads") as any)
-    .select("telefone")
-    .eq("id", parsed.leadId)
-    .maybeSingle();
+  const { data: lead } = await supabase.from("leads").select("telefone").eq("id", parsed.leadId).maybeSingle();
 
-  if (
-    (lead as unknown as { telefone: string } | null)?.telefone &&
-    env.evolutionApiUrl &&
-    env.evolutionApiKey &&
-    env.evolutionInstance
-  ) {
+  if (lead?.telefone && env.evolutionApiUrl && env.evolutionApiKey && env.evolutionInstance) {
     const instanceName = await resolveEvolutionInstanceName();
-    const response = await fetch(`${env.evolutionApiUrl}/message/sendText/${encodeURIComponent(instanceName ?? env.evolutionInstance)}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: env.evolutionApiKey
-      },
-      body: JSON.stringify({
-        number: (lead as unknown as { telefone: string }).telefone,
-        text: parsed.content
-      })
-    });
+    const response = await fetch(
+      `${env.evolutionApiUrl}/message/sendText/${encodeURIComponent(instanceName ?? env.evolutionInstance)}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: env.evolutionApiKey
+        },
+        body: JSON.stringify({
+          number: lead.telefone,
+          text: parsed.content
+        })
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Falha ao enviar mensagem pela Evolution");
@@ -83,8 +78,8 @@ export async function sendMessage(payload: unknown) {
     timestamp
   });
 
-  if ((card as unknown as { id: string } | null)?.id) {
-    await touchCard((card as unknown as { id: string }).id, timestamp);
+  if (card?.id) {
+    await touchCard(card.id, timestamp);
   }
 
   return message;

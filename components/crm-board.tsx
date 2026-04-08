@@ -85,21 +85,28 @@ export function CrmBoard({
 
     if (!activeId || !overId || fromColumnId === overId) return;
 
+    const previousCards = cards;
     setCards((current) =>
       current.map((card) =>
         card.card_id === activeId ? { ...card, coluna_id: overId, ultima_interacao: new Date().toISOString() } : card
       )
     );
 
-    await fetch("/api/cards/move", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        cardId: activeId,
-        fromColumnId,
-        toColumnId: overId
-      })
-    });
+    try {
+      const response = await fetch("/api/cards/move", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cardId: activeId, fromColumnId, toColumnId: overId })
+      });
+
+      if (!response.ok) {
+        setCards(previousCards);
+        return;
+      }
+    } catch {
+      setCards(previousCards);
+      return;
+    }
 
     await refreshCards();
   }
@@ -122,7 +129,7 @@ export function CrmBoard({
   useEffect(() => {
     const interval = window.setInterval(() => {
       void refreshCards();
-    }, 5000);
+    }, 60000);
 
     return () => window.clearInterval(interval);
   }, []);

@@ -7,8 +7,15 @@ import type { DashboardData } from "@/lib/types/database";
 export function DashboardOverview({ data }: { data: DashboardData }) {
   const totalLeads = data.cards.length;
   const newLeads = data.cards.filter((card) => card.coluna_id === data.columns[0]?.id).length;
-  const activeColumns = data.columns.length;
-  const latestCards = data.cards.slice(0, 5);
+  const highPriority = data.cards.filter((card) => card.prioridade === "alta").length;
+  const withoutMessage = data.cards.filter((card) => !card.ultima_mensagem).length;
+  const latestCards = [...data.cards]
+    .sort((a, b) => {
+      if (!a.ultima_interacao) return 1;
+      if (!b.ultima_interacao) return -1;
+      return new Date(b.ultima_interacao).getTime() - new Date(a.ultima_interacao).getTime();
+    })
+    .slice(0, 8);
 
   return (
     <AppFrame>
@@ -21,7 +28,7 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
             label="Leads ativos"
             value={String(totalLeads)}
@@ -33,9 +40,14 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
             helper="Contatos aguardando qualificacao na primeira coluna."
           />
           <SummaryCard
-            label="Etapas"
-            value={String(activeColumns)}
-            helper="Colunas dinamicas do pipeline configurado."
+            label="Alta prioridade"
+            value={String(highPriority)}
+            helper="Leads marcados como alta prioridade no pipeline."
+          />
+          <SummaryCard
+            label="Sem mensagem"
+            value={String(withoutMessage)}
+            helper="Leads que ainda nao receberam nenhuma mensagem."
           />
         </div>
 
