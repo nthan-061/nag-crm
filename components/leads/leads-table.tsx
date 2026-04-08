@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -30,10 +30,6 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
       // Keep the current table visible if background sync fails.
     }
   }
-
-  useEffect(() => {
-    void syncLeads();
-  }, []);
 
   function handleDelete(leadId: string) {
     if (!window.confirm("Tem certeza que deseja apagar este lead? Esta acao remove card e mensagens relacionadas.")) {
