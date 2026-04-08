@@ -1,7 +1,7 @@
 "use client";
 
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { ColumnManager } from "@/components/kanban/column-manager";
 import { KanbanColumn } from "@/components/kanban/kanban-column";
@@ -24,20 +24,51 @@ export function CrmBoard({
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialCards[0]?.lead_id ?? null);
   const [showColumnManager, setShowColumnManager] = useState(false);
   const [search, setSearch] = useState("");
+  const latestRefreshId = useRef(0);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   async function refreshCards() {
+    const refreshId = ++latestRefreshId.current;
+
+    try {
       const response = await fetch("/api/cards", {
         cache: "no-store"
       });
-    const payload = (await response.json()) as { data: KanbanCardRecord[] };
-    setCards(payload.data ?? []);
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as { data?: KanbanCardRecord[] };
+      if (refreshId !== latestRefreshId.current || !Array.isArray(payload.data)) {
+        return;
+      }
+
+      setCards(payload.data);
+    } catch {
+      // Preserve the current UI state when background refresh fails.
+    }
   }
 
   async function refreshColumns() {
-    const response = await fetch("/api/columns");
-    const payload = (await response.json()) as { data: Column[] };
-    setColumns(payload.data ?? []);
+    try {
+      const response = await fetch("/api/columns", {
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as { data?: Column[] };
+      if (!Array.isArray(payload.data)) {
+        return;
+      }
+
+      setColumns(payload.data);
+    } catch {
+      // Keep the current board visible if columns refresh fails.
+    }
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -86,6 +117,24 @@ export function CrmBoard({
 
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!cards.length) {
+      if (selectedLeadId !== null) {
+        setSelectedLeadId(null);
+      }
+      return;
+    }
+
+    if (!selectedLeadId) {
+      setSelectedLeadId(cards[0].lead_id);
+      return;
+    }
+
+    if (!cards.some((card) => card.lead_id === selectedLeadId)) {
+      setSelectedLeadId(cards[0].lead_id);
+    }
+  }, [cards, selectedLeadId]);
 
   const groupedCards = useMemo(
     () =>

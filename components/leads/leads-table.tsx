@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatPhone } from "@/lib/utils";
@@ -9,6 +10,7 @@ import type { Lead } from "@/lib/types/database";
 export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
   const [leads, setLeads] = useState(initialLeads);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   function handleDelete(leadId: string) {
     if (!window.confirm("Tem certeza que deseja apagar este lead? Esta acao remove card e mensagens relacionadas.")) {
@@ -17,12 +19,21 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
 
     startTransition(() => {
       void (async () => {
-        const response = await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
+        const response = await fetch(`/api/leads/${leadId}`, {
+          method: "DELETE",
+          cache: "no-store"
+        });
+
         if (!response.ok) {
-          window.alert("Nao foi possivel apagar o lead.");
+          const payload = (await response.json().catch(() => ({ error: "Nao foi possivel apagar o lead." }))) as {
+            error?: string;
+          };
+          window.alert(payload.error ?? "Nao foi possivel apagar o lead.");
           return;
         }
+
         setLeads((current) => current.filter((lead) => lead.id !== leadId));
+        router.refresh();
       })();
     });
   }

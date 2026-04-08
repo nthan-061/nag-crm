@@ -1,15 +1,32 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types/database";
 
 export function MessageList({ messages }: { messages: Message[] }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const previousCountRef = useRef(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const shouldStickToBottom = distanceFromBottom < 80 || previousCountRef.current === 0;
+
+    if (shouldStickToBottom) {
+      container.scrollTop = container.scrollHeight;
+    }
+
+    previousCountRef.current = messages.length;
+  }, [messages]);
+
   return (
-    <ScrollArea className="h-[calc(100vh-270px)]">
-      <div className="flex flex-col gap-3 pr-4">
+    <div ref={containerRef} className="h-[calc(100vh-270px)] overflow-y-auto pr-4">
+      <div className="flex flex-col gap-3">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -25,6 +42,6 @@ export function MessageList({ messages }: { messages: Message[] }) {
           </div>
         ))}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
