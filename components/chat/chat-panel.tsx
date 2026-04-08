@@ -24,7 +24,9 @@ export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | n
     }
 
     setIsLoading(true);
-    const response = await fetch(`/api/messages/${selectedCard.lead_id}`);
+    const response = await fetch(`/api/messages/${selectedCard.lead_id}`, {
+      cache: "no-store"
+    });
     const payload = (await response.json()) as { data: Message[] };
     setMessages(payload.data ?? []);
     setIsLoading(false);

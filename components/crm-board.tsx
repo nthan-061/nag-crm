@@ -27,7 +27,9 @@ export function CrmBoard({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   async function refreshCards() {
-    const response = await fetch("/api/cards");
+      const response = await fetch("/api/cards", {
+        cache: "no-store"
+      });
     const payload = (await response.json()) as { data: KanbanCardRecord[] };
     setCards(payload.data ?? []);
   }
