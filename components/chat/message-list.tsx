@@ -7,27 +7,28 @@ import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types/database";
 
 export function MessageList({ messages, leadId }: { messages: Message[]; leadId: string | null }) {
+  const bottomRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const previousCountRef = useRef(0);
-
-  // Always scroll to bottom when switching leads
-  useEffect(() => {
-    previousCountRef.current = 0;
-  }, [leadId]);
+  const prevLeadIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || messages.length === 0) return;
 
-    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-    const shouldStickToBottom = distanceFromBottom < 80 || previousCountRef.current === 0;
+    const leadChanged = prevLeadIdRef.current !== leadId;
+    prevLeadIdRef.current = leadId;
 
-    if (shouldStickToBottom) {
+    if (leadChanged) {
+      // Hard scroll to bottom on lead switch — no animation to avoid flicker
       container.scrollTop = container.scrollHeight;
+    } else {
+      // Stick to bottom only if already near bottom (user hasn't scrolled up)
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      if (distanceFromBottom < 80) {
+        bottomRef.current?.scrollIntoView({ block: "end" });
+      }
     }
-
-    previousCountRef.current = messages.length;
-  }, [messages]);
+  }, [messages, leadId]);
 
   return (
     <div ref={containerRef} className="h-[calc(100vh-270px)] overflow-y-auto pr-4">
@@ -47,6 +48,7 @@ export function MessageList({ messages, leadId }: { messages: Message[]; leadId:
           </div>
         ))}
       </div>
+      <div ref={bottomRef} />
     </div>
   );
 }

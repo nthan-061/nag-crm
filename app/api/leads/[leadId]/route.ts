@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { removeLead } from "@/lib/services/leads-service";
 
@@ -14,6 +15,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Lead nao encontrado" }, { status: 404 });
     }
 
+    revalidatePath("/leads");
     return NextResponse.json(
       { ok: true, leadId: deletedLead.id },
       { headers: { "Cache-Control": "no-store, max-age=0" } }
