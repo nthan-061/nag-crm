@@ -28,9 +28,21 @@ function isAuthorized(request: NextRequest, env: ReturnType<typeof getEnv>): boo
 
 export async function POST(request: NextRequest) {
   const env = getEnv();
+  const querySecret = request.nextUrl.searchParams.get("secret");
+
+  console.log("[webhook] received", {
+    hasWebhookSecret: !!env.webhookSecret,
+    hasEvolutionApiKey: !!env.evolutionApiKey,
+    querySecretMatch: querySecret === env.webhookSecret,
+    headers: {
+      "x-webhook-secret": !!request.headers.get("x-webhook-secret"),
+      authorization: !!request.headers.get("authorization"),
+      apikey: !!request.headers.get("apikey"),
+    }
+  });
 
   if (!isAuthorized(request, env)) {
-    console.warn("Webhook unauthorized");
+    console.warn("[webhook] unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -38,18 +50,23 @@ export async function POST(request: NextRequest) {
   try {
     payload = await request.json();
   } catch {
+    console.warn("[webhook] invalid JSON");
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  const event = (payload as Record<string, unknown>)?.event;
+  console.log("[webhook] authorized, event:", event);
+
   try {
     const data = await processWhatsappWebhook(payload);
+    console.log("[webhook] processed:", data);
     return NextResponse.json({ data });
   } catch (error) {
     if (error instanceof ZodError) {
-      console.warn("Webhook payload validation failed", error.issues);
+      console.warn("[webhook] zod validation failed", error.issues);
       return NextResponse.json({ error: "Invalid payload" }, { status: 422 });
     }
-    console.error("Webhook processing failed", error);
+    console.error("[webhook] processing failed", error);
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }
