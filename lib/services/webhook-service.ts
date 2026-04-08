@@ -56,7 +56,7 @@ function extractPhoneFromCandidate(candidate: WebhookCandidate) {
   return normalizePhone(raw.split("@")[0] ?? raw);
 }
 
-function normalizeWebhookMessage(payload: WebhookMessage): WebhookCandidate {
+function normalizeWebhookMessage(payload: WebhookMessage): WebhookCandidate | null {
   const candidates: WebhookCandidate[] = [];
 
   if (payload?.data?.messages?.length) {
@@ -78,23 +78,24 @@ function normalizeWebhookMessage(payload: WebhookMessage): WebhookCandidate {
     candidates.push(payload);
   }
 
-  const inboundCandidate =
+  return (
     candidates.find((candidate) => candidate?.key?.fromMe === false && extractPhoneFromCandidate(candidate)) ??
-    candidates.find((candidate) => candidate?.key?.fromMe !== true && extractPhoneFromCandidate(candidate));
-
-  if (!inboundCandidate) {
-    throw new Error("Nenhuma mensagem de entrada valida encontrada no payload");
-  }
-
-  return inboundCandidate;
+    candidates.find((candidate) => candidate?.key?.fromMe !== true && extractPhoneFromCandidate(candidate)) ??
+    null
+  );
 }
 
 export async function processWhatsappWebhook(payload: unknown) {
   await ensureDefaultPipeline();
   const parsed = webhookMessageSchema.parse(payload);
   const inboundMessage = normalizeWebhookMessage(parsed);
-  const telefone = extractPhoneFromCandidate(inboundMessage);
 
+  if (!inboundMessage) {
+    // Evento de saida (fromMe: true) ou evento sem mensagem de entrada — ignorar silenciosamente
+    return { ok: true, skipped: true };
+  }
+
+  const telefone = extractPhoneFromCandidate(inboundMessage);
   if (!telefone) throw new Error("Telefone nao encontrado no payload");
 
   const rawTimestamp = inboundMessage.messageTimestamp ?? inboundMessage.timestamp;

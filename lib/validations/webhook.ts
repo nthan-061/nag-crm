@@ -21,7 +21,7 @@ const messageDataSchema = z.object({
 });
 
 export const webhookMessageSchema = z.object({
-  event: z.string(),
+  event: z.string().optional(),
   data: z
     .object({
       messages: z.array(messageDataSchema).optional(),

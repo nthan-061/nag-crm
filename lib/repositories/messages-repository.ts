@@ -21,11 +21,24 @@ export async function createMessage(input: {
   external_id?: string;
 }): Promise<Message | null> {
   const supabase = createSupabaseAdminClient();
+
+  // Quando há external_id, usa upsert para garantir idempotência (retry da Evolution)
+  if (input.external_id) {
+    const { data, error } = await supabase
+      .from("messages")
+      .upsert(input, { onConflict: "external_id", ignoreDuplicates: true })
+      .select("*")
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  // Sem external_id (mensagens enviadas pelo CRM): insert simples
   const { data, error } = await supabase
     .from("messages")
-    .upsert(input, { onConflict: "external_id", ignoreDuplicates: true })
+    .insert(input)
     .select("*")
-    .maybeSingle();
+    .single();
   if (error) throw error;
   return data;
 }
