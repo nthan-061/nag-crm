@@ -59,19 +59,31 @@ function extractPhoneFromCandidate(candidate: WebhookCandidate) {
 function normalizeWebhookMessage(payload: WebhookMessage): WebhookCandidate | null {
   const candidates: WebhookCandidate[] = [];
 
-  if (payload?.data?.messages?.length) {
-    for (const message of payload.data.messages) {
+  // data como array: Evolution envia diretamente um array de mensagens
+  if (Array.isArray(payload?.data)) {
+    for (const message of payload.data) {
       candidates.push({
         ...message,
-        pushName: message.pushName ?? payload.data.pushName ?? payload.pushName,
-        messageTimestamp:
-          message.messageTimestamp ?? payload.data.messageTimestamp ?? payload.messageTimestamp ?? payload.timestamp
+        pushName: message.pushName ?? payload.pushName,
+        messageTimestamp: message.messageTimestamp ?? payload.messageTimestamp ?? payload.timestamp
       });
     }
-  }
+  } else {
+    // data como objeto
+    if (payload?.data?.messages?.length) {
+      for (const message of payload.data.messages) {
+        candidates.push({
+          ...message,
+          pushName: message.pushName ?? payload.data.pushName ?? payload.pushName,
+          messageTimestamp:
+            message.messageTimestamp ?? payload.data.messageTimestamp ?? payload.messageTimestamp ?? payload.timestamp
+        });
+      }
+    }
 
-  if (payload?.data && (payload.data.key || payload.data.message)) {
-    candidates.push(payload.data);
+    if (payload?.data && (payload.data.key || payload.data.message)) {
+      candidates.push(payload.data);
+    }
   }
 
   if (payload?.key || payload?.message) {

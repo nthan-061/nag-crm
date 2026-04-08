@@ -20,17 +20,20 @@ const messageDataSchema = z.object({
   cleanedSenderPn: z.string().optional(),
 });
 
+const dataObjectSchema = z.object({
+  messages: z.array(messageDataSchema).optional(),
+  key: messageKeySchema.optional(),
+  message: z.record(z.unknown()).optional(),
+  pushName: z.string().optional(),
+  messageTimestamp: z.union([z.string(), z.number()]).optional(),
+});
+
+// Evolution API envia data como objeto OU como array dependendo do tipo de evento
+const dataSchema = z.union([dataObjectSchema, z.array(messageDataSchema)]);
+
 export const webhookMessageSchema = z.object({
   event: z.string().optional(),
-  data: z
-    .object({
-      messages: z.array(messageDataSchema).optional(),
-      key: messageKeySchema.optional(),
-      message: z.record(z.unknown()).optional(),
-      pushName: z.string().optional(),
-      messageTimestamp: z.union([z.string(), z.number()]).optional(),
-    })
-    .optional(),
+  data: dataSchema.optional(),
   key: messageKeySchema.optional(),
   message: z.record(z.unknown()).optional(),
   pushName: z.string().optional(),
