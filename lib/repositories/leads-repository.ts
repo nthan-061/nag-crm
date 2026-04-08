@@ -6,7 +6,6 @@ export async function listLeads(): Promise<Lead[]> {
   const { data, error } = await supabase
     .from("leads")
     .select("*")
-    .is("deleted_at", null)
     .order("criado_em", { ascending: false });
   if (error) throw error;
   return data ?? [];
@@ -18,7 +17,6 @@ export async function findLeadByPhone(telefone: string): Promise<Lead | null> {
     .from("leads")
     .select("*")
     .eq("telefone", telefone)
-    .is("deleted_at", null)
     .maybeSingle();
   if (error) throw error;
   return data;

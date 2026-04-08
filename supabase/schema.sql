@@ -80,8 +80,7 @@ select
     limit 1
   ) as ultima_mensagem
 from public.cards c
-inner join public.leads l on l.id = c.lead_id
-where l.deleted_at is null;
+inner join public.leads l on l.id = c.lead_id;
 
 create or replace function public.move_card(
   p_card_id uuid,
