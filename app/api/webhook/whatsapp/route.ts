@@ -11,10 +11,14 @@ function isAuthorized(request: NextRequest, env: ReturnType<typeof getEnv>): boo
   const secret = request.headers.get("x-webhook-secret");
   const authHeader = request.headers.get("authorization");
   const apiKeyHeader = request.headers.get("apikey");
+  const querySecret = request.nextUrl.searchParams.get("secret");
+  const queryToken = request.nextUrl.searchParams.get("token");
 
   if (env.webhookSecret) {
     if (secret === env.webhookSecret) return true;
     if (authHeader === `Bearer ${env.webhookSecret}`) return true;
+    if (querySecret === env.webhookSecret) return true;
+    if (queryToken === env.webhookSecret) return true;
   }
 
   if (env.evolutionApiKey && apiKeyHeader === env.evolutionApiKey) return true;
