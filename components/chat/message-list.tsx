@@ -6,9 +6,14 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types/database";
 
-export function MessageList({ messages }: { messages: Message[] }) {
+export function MessageList({ messages, leadId }: { messages: Message[]; leadId: string | null }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const previousCountRef = useRef(0);
+
+  // Always scroll to bottom when switching leads
+  useEffect(() => {
+    previousCountRef.current = 0;
+  }, [leadId]);
 
   useEffect(() => {
     const container = containerRef.current;

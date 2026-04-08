@@ -90,11 +90,34 @@ function normalizeWebhookMessage(payload: WebhookMessage): WebhookCandidate | nu
     candidates.push(payload);
   }
 
-  return (
-    candidates.find((candidate) => candidate?.key?.fromMe === false && extractPhoneFromCandidate(candidate)) ??
+  return candidates.find((candidate) => candidate?.key?.fromMe === false && extractPhoneFromCandidate(candidate)) ??
     candidates.find((candidate) => candidate?.key?.fromMe !== true && extractPhoneFromCandidate(candidate)) ??
-    null
-  );
+    null;
+}
+
+function extractOutboundCandidate(payload: WebhookMessage): WebhookCandidate | null {
+  const candidates: WebhookCandidate[] = [];
+
+  if (Array.isArray(payload?.data)) {
+    for (const message of payload.data) {
+      candidates.push({ ...message, pushName: message.pushName ?? payload.pushName, messageTimestamp: message.messageTimestamp ?? payload.messageTimestamp ?? payload.timestamp });
+    }
+  } else {
+    if (payload?.data?.messages?.length) {
+      for (const message of payload.data.messages) {
+        candidates.push({ ...message, pushName: message.pushName ?? payload.data.pushName ?? payload.pushName, messageTimestamp: message.messageTimestamp ?? payload.data.messageTimestamp ?? payload.messageTimestamp ?? payload.timestamp });
+      }
+    }
+    if (payload?.data && (payload.data.key || payload.data.message)) {
+      candidates.push(payload.data);
+    }
+  }
+
+  if (payload?.key || payload?.message) {
+    candidates.push(payload);
+  }
+
+  return candidates.find((candidate) => candidate?.key?.fromMe === true && extractPhoneFromCandidate(candidate)) ?? null;
 }
 
 export async function processWhatsappWebhook(payload: unknown) {
@@ -103,7 +126,41 @@ export async function processWhatsappWebhook(payload: unknown) {
   const inboundMessage = normalizeWebhookMessage(parsed);
 
   if (!inboundMessage) {
-    // Evento de saida (fromMe: true) ou evento sem mensagem de entrada — ignorar silenciosamente
+    // Verificar se é mensagem enviada pelo celular (fromMe: true)
+    const outboundMessage = extractOutboundCandidate(parsed);
+    if (outboundMessage) {
+      const telefone = extractPhoneFromCandidate(outboundMessage);
+      if (telefone) {
+        const lead = await findLeadByPhone(telefone);
+        if (lead) {
+          const rawTimestamp = outboundMessage.messageTimestamp ?? outboundMessage.timestamp;
+          const timestamp = rawTimestamp
+            ? new Date(Number(rawTimestamp) * 1000 || Number(rawTimestamp)).toISOString()
+            : new Date().toISOString();
+          const conteudo = extractMessageContent(outboundMessage.message);
+          const externalId = extractMessageId(outboundMessage);
+
+          const createdMessage = await createMessage({
+            lead_id: lead.id,
+            conteudo,
+            tipo: "saida",
+            timestamp,
+            external_id: externalId
+          });
+
+          if (!createdMessage) {
+            return { ok: true, leadId: lead.id, duplicate: true };
+          }
+
+          const supabase = createSupabaseAdminClient();
+          const { data: card } = await supabase.from("cards").select("id").eq("lead_id", lead.id).maybeSingle();
+          if (card?.id) await touchCard(card.id, timestamp);
+
+          return { ok: true, leadId: lead.id, outbound: true, messageId: createdMessage.id };
+        }
+      }
+    }
+    // Evento sem mensagem reconhecível — ignorar silenciosamente
     return { ok: true, skipped: true };
   }
 

@@ -58,7 +58,6 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
         }
 
         setLeads((current) => current.filter((lead) => lead.id !== leadId));
-        await syncLeads();
         router.refresh();
       })();
     });

@@ -45,7 +45,13 @@ export function MessageInput({
       <Textarea
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder={leadId ? "Responder conversa..." : "Selecione um card para responder"}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            void handleSubmit();
+          }
+        }}
+        placeholder={leadId ? "Responder conversa... (Enter para enviar, Shift+Enter para nova linha)" : "Selecione um card para responder"}
         disabled={!leadId || isPending}
       />
       <Button className="w-full" onClick={handleSubmit} disabled={!leadId || !value.trim() || isPending}>

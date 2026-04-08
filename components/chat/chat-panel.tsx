@@ -136,7 +136,7 @@ export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | n
             </div>
           ) : activeTab === "chat" ? (
             <>
-              <MessageList messages={messages} />
+              <MessageList messages={messages} leadId={selectedCard?.lead_id ?? null} />
               <div className="mt-5">
                 <MessageInput leadId={selectedCard.lead_id} onSent={loadMessages} />
               </div>

@@ -69,6 +69,25 @@ export async function sendMessage(payload: unknown) {
     if (!response.ok) {
       throw new Error("Falha ao enviar mensagem pela Evolution");
     }
+
+    const evolutionResponse = (await response.json().catch(() => null)) as {
+      key?: { id?: string };
+    } | null;
+    const externalId = evolutionResponse?.key?.id ?? undefined;
+
+    const message = await createMessage({
+      lead_id: parsed.leadId,
+      conteudo: parsed.content,
+      tipo: "saida",
+      timestamp,
+      external_id: externalId
+    });
+
+    if (card?.id) {
+      await touchCard(card.id, timestamp);
+    }
+
+    return message;
   }
 
   const message = await createMessage({
