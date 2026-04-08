@@ -12,28 +12,37 @@ import type { KanbanCardRecord } from "@/lib/types/database";
 export function KanbanCard({
   card,
   isSelected,
-  onSelect
+  onSelect,
+  draggable = true,
+  isOverlay = false
 }: {
   card: KanbanCardRecord;
   isSelected: boolean;
   onSelect: (leadId: string) => void;
+  draggable?: boolean;
+  isOverlay?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.card_id,
-    data: { cardId: card.card_id, fromColumnId: card.coluna_id }
+    data: { cardId: card.card_id, fromColumnId: card.coluna_id },
+    disabled: !draggable
   });
+
+  const dragStyle = draggable ? { transform: CSS.Translate.toString(transform) } : undefined;
 
   return (
     <Card
       ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform) }}
+      style={dragStyle}
       className={cn(
-        "cursor-grab border-white/5 p-4 transition hover:border-accent/30 hover:bg-white/[0.04]",
+        "border-white/5 p-4 transition hover:border-accent/30 hover:bg-white/[0.04]",
+        draggable && "cursor-grab",
         isSelected && "border-accent/40 bg-accent/10",
-        isDragging && "opacity-60"
+        isDragging && "opacity-30",
+        isOverlay && "rotate-1 border-accent/40 bg-card/95 shadow-2xl shadow-black/50 ring-1 ring-accent/20"
       )}
-      {...listeners}
-      {...attributes}
+      {...(draggable ? listeners : {})}
+      {...(draggable ? attributes : {})}
       onClick={() => onSelect(card.lead_id)}
     >
       <div className="flex items-start justify-between gap-2">

@@ -1,9 +1,10 @@
 "use client";
 
-import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { ColumnManager } from "@/components/kanban/column-manager";
+import { KanbanCard } from "@/components/kanban/kanban-card";
 import { KanbanColumn } from "@/components/kanban/kanban-column";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ export function CrmBoard({
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialCards[0]?.lead_id ?? null);
   const [showColumnManager, setShowColumnManager] = useState(false);
   const [search, setSearch] = useState("");
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const latestRefreshId = useRef(0);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -71,10 +73,15 @@ export function CrmBoard({
     }
   }
 
+  function handleDragStart(event: DragStartEvent) {
+    setActiveCardId(event.active.id?.toString() ?? null);
+  }
+
   async function handleDragEnd(event: DragEndEvent) {
     const activeId = event.active.id?.toString();
     const overId = event.over?.id?.toString();
     const fromColumnId = event.active.data.current?.fromColumnId as string | undefined;
+    setActiveCardId(null);
 
     if (!activeId || !overId || fromColumnId === overId) return;
 
@@ -96,6 +103,8 @@ export function CrmBoard({
 
     await refreshCards();
   }
+
+  const activeCard = cards.find((card) => card.card_id === activeCardId) ?? null;
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -195,7 +204,7 @@ export function CrmBoard({
           />
         )}
 
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveCardId(null)}>
           <ScrollArea className="w-full">
             <div className="flex min-h-[calc(100vh-150px)] gap-4 pb-6">
               {columns.map((column) => (
@@ -209,6 +218,13 @@ export function CrmBoard({
               ))}
             </div>
           </ScrollArea>
+          <DragOverlay>
+            {activeCard ? (
+              <div className="w-[320px]">
+                <KanbanCard card={activeCard} isSelected={selectedLeadId === activeCard.lead_id} onSelect={setSelectedLeadId} draggable={false} isOverlay />
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </div>
 
