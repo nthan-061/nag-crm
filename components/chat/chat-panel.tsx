@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { MessageCircleMore, Phone, Globe, Trash2 } from "lucide-react";
 import { MessageInput } from "@/components/chat/message-input";
-import { MessageList } from "@/components/chat/message-list";
+import { MessageList, type MessageListHandle } from "@/components/chat/message-list";
 import { NotesPanel } from "@/components/chat/notes-panel";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -29,6 +29,7 @@ export function ChatPanel({
   const [activeTab, setActiveTab] = useState<"chat" | "notes">("chat");
   const [isDeleting, startDeleteTransition] = useTransition();
   const latestRequestId = useRef(0);
+  const messageListRef = useRef<MessageListHandle>(null);
 
   const loadMessages = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!selectedCard?.lead_id) {
@@ -146,9 +147,17 @@ export function ChatPanel({
           </div>
         ) : activeTab === "chat" ? (
           <>
-            <MessageList messages={messages} leadId={selectedCard.lead_id} />
+            <MessageList ref={messageListRef} messages={messages} leadId={selectedCard.lead_id} />
             <div className="border-t border-border/40 p-4">
-              <MessageInput leadId={selectedCard.lead_id} onSent={loadMessages} />
+              <MessageInput
+                leadId={selectedCard.lead_id}
+                onSent={async () => {
+                  // Force scroll to bottom when the user sends a message, regardless
+                  // of their current scroll position, then load the updated list.
+                  messageListRef.current?.scrollToBottom();
+                  await loadMessages();
+                }}
+              />
             </div>
           </>
         ) : (
