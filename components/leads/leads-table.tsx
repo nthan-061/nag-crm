@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -11,24 +11,26 @@ import type { Lead } from "@/lib/types/database";
 export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
   const [leads, setLeads] = useState(initialLeads);
   const [isPending, startTransition] = useTransition();
+  const deletingIds = useRef<Set<string>>(new Set());
   const router = useRouter();
+
+  // Fetch fresh data on mount so navigating to this page always reflects
+  // the real DB state, regardless of Next.js client router cache (30s TTL).
+  useEffect(() => {
+    void syncLeads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function syncLeads() {
     try {
-      const response = await fetch("/api/leads", {
-        cache: "no-store"
-      });
-
-      if (!response.ok) {
-        return;
-      }
-
+      const response = await fetch("/api/leads", { cache: "no-store" });
+      if (!response.ok) return;
       const payload = (await response.json()) as { data?: Lead[] };
-      if (Array.isArray(payload.data)) {
-        setLeads(payload.data);
-      }
+      if (!Array.isArray(payload.data)) return;
+      // Merge: keep any already-deleted leads out of the new list
+      setLeads(payload.data.filter((lead) => !deletingIds.current.has(lead.id)));
     } catch {
-      // Keep the current table visible if background sync fails.
+      // Keep current state if fetch fails
     }
   }
 
@@ -39,24 +41,32 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
 
     startTransition(() => {
       void (async () => {
+        // Optimistic: remove immediately and track the id so syncLeads won't restore it
+        deletingIds.current.add(leadId);
+        setLeads((current) => current.filter((lead) => lead.id !== leadId));
+
         const response = await fetch(`/api/leads/${leadId}`, {
           method: "DELETE",
           cache: "no-store"
         });
 
         if (!response.ok) {
+          // Rollback optimistic update on failure
+          deletingIds.current.delete(leadId);
+          await syncLeads();
+          router.refresh();
           const payload = (await response.json().catch(() => ({ error: "Nao foi possivel apagar o lead." }))) as {
             error?: string;
           };
-          await syncLeads();
-          router.refresh();
           window.alert(payload.error ?? "Nao foi possivel apagar o lead.");
           return;
         }
 
-        setLeads((current) => current.filter((lead) => lead.id !== leadId));
+        // Delete confirmed — emit event so pipeline can refresh in background
         emitLeadDeleted(leadId);
         router.refresh();
+        // Clean up tracking after a short delay (allow any in-flight syncs to settle)
+        setTimeout(() => { deletingIds.current.delete(leadId); }, 3000);
       })();
     });
   }

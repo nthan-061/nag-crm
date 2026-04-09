@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { REALTIME_CHANNEL } from "@/lib/constants";
-import { LEAD_DELETED_STORAGE_KEY, emitLeadDeleted } from "@/lib/lead-events";
+import { LEAD_DELETED_EVENT, LEAD_DELETED_STORAGE_KEY, emitLeadDeleted } from "@/lib/lead-events";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Column, KanbanCardRecord } from "@/lib/types/database";
 
@@ -175,13 +175,22 @@ export function CrmBoard({
   }, []);
 
   useEffect(() => {
+    // Cross-tab: storage event fires when another tab writes to localStorage
     function handleStorage(event: StorageEvent) {
       if (event.key !== LEAD_DELETED_STORAGE_KEY || !event.newValue) return;
       void refreshCards();
     }
+    // Same-tab: CustomEvent fires when /leads deletes a lead in the same browser tab
+    function handleCustomEvent() {
+      void refreshCards();
+    }
 
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener(LEAD_DELETED_EVENT, handleCustomEvent);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(LEAD_DELETED_EVENT, handleCustomEvent);
+    };
   }, []);
 
   useEffect(() => {
