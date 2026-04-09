@@ -147,10 +147,11 @@ export function CrmBoard({
 
   const activeCard = cards.find((card) => card.card_id === activeCardId) ?? null;
 
-  // Fetch fresh cards immediately on mount — the SSR snapshot may be stale
+  // Fetch fresh data immediately on mount — the SSR snapshot may be stale
   // if the router served a cached version of the page (Next.js 14 client cache).
   useEffect(() => {
     void refreshCards();
+    void refreshColumns();
   }, []);
 
   useEffect(() => {

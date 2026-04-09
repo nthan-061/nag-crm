@@ -10,3 +10,7 @@ export const updateColumnSchema = z.object({
   cor: z.string().min(4).max(20).optional().nullable(),
   ordem: z.number().int().positive().optional()
 });
+
+export const reorderColumnsSchema = z.object({
+  orderedIds: z.array(z.string().uuid()).min(1)
+});

@@ -67,8 +67,29 @@ export async function deleteColumn(columnId: string): Promise<void> {
   const { error } = await supabase.from("columns").delete().eq("id", columnId);
   if (error) throw error;
 
-  const columns = await listColumns();
-  await Promise.all(
-    columns.map((column, index) => updateColumn(column.id, { ordem: index + 1 }))
-  );
+  // Normalize remaining orders sequentially (ascending) to avoid
+  // hitting the unique(pipeline_id, ordem) constraint that concurrent
+  // parallel updates would violate.
+  const remaining = await listColumns();
+  for (let i = 0; i < remaining.length; i++) {
+    await updateColumn(remaining[i].id, { ordem: i + 1 });
+  }
+}
+
+// Reorders all columns for the pipeline using a two-phase update to avoid
+// the unique(pipeline_id, ordem) constraint during the swap.
+// Phase 1: shift all orders to a high offset (no conflicts with each other).
+// Phase 2: set each column to its final sequential position.
+export async function reorderColumns(orderedIds: string[]): Promise<void> {
+  const OFFSET = 1_000_000;
+
+  // Phase 1: shift to uncontested high values
+  for (let i = 0; i < orderedIds.length; i++) {
+    await updateColumn(orderedIds[i], { ordem: OFFSET + i + 1 });
+  }
+
+  // Phase 2: set correct 1-based sequential order
+  for (let i = 0; i < orderedIds.length; i++) {
+    await updateColumn(orderedIds[i], { ordem: i + 1 });
+  }
 }

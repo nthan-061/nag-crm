@@ -2,9 +2,10 @@ import {
   createColumn,
   deleteColumn,
   listColumns,
+  reorderColumns,
   updateColumn
 } from "@/lib/repositories/columns-repository";
-import { createColumnSchema, updateColumnSchema } from "@/lib/validations/columns";
+import { createColumnSchema, reorderColumnsSchema, updateColumnSchema } from "@/lib/validations/columns";
 
 export async function getColumns() {
   return listColumns();
@@ -20,4 +21,9 @@ export async function editColumn(columnId: string, payload: unknown) {
 
 export async function removeColumn(columnId: string) {
   return deleteColumn(columnId);
+}
+
+export async function reorderColumnsService(payload: unknown) {
+  const { orderedIds } = reorderColumnsSchema.parse(payload);
+  await reorderColumns(orderedIds);
 }

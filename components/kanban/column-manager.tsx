@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -104,6 +104,37 @@ export function ColumnManager({
     });
   }
 
+  function handleMove(index: number, direction: "left" | "right") {
+    const targetIndex = direction === "left" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= drafts.length) return;
+
+    // Optimistically reorder the local draft list
+    const reordered = [...drafts];
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    setDrafts(reordered);
+
+    const orderedIds = reordered.map((d) => d.id);
+
+    setError(null);
+    startTransition(() => {
+      void (async () => {
+        const response = await fetch("/api/columns/reorder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderedIds })
+        });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({}))) as { error?: string };
+          setError(payload.error ?? "Nao foi possivel reordenar as colunas.");
+          // Revert optimistic update by syncing from server
+          await onUpdated();
+          return;
+        }
+        await onUpdated();
+      })();
+    });
+  }
+
   return (
     <Card className="mb-4 p-4">
       <div className="mb-4 flex items-center justify-between">
@@ -118,8 +149,26 @@ export function ColumnManager({
       )}
 
       <div className="space-y-3">
-        {drafts.map((draft) => (
-          <div key={draft.id} className="grid gap-3 rounded-2xl border border-border p-3 md:grid-cols-[1fr_120px_140px_48px]">
+        {drafts.map((draft, index) => (
+          <div key={draft.id} className="grid gap-3 rounded-2xl border border-border p-3 md:grid-cols-[48px_48px_1fr_120px_140px_48px]">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleMove(index, "left")}
+              disabled={isPending || index === 0}
+              title="Mover para esquerda"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleMove(index, "right")}
+              disabled={isPending || index === drafts.length - 1}
+              title="Mover para direita"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
             <Input value={draft.nome} onChange={(e) => updateDraft(draft.id, "nome", e.target.value)} />
             <Input value={draft.cor} onChange={(e) => updateDraft(draft.id, "cor", e.target.value)} />
             <Button variant="secondary" onClick={() => handleSave(draft.id)} disabled={isPending}>
