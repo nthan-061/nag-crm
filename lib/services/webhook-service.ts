@@ -26,17 +26,38 @@ type WebhookCandidate = {
   timestamp?: string | number;
 };
 
-// ─── Event allowlist ─────────────────────────────────────────────────────────
-// Only these Evolution API events carry real message data.
-// All other events (CONNECTION_UPDATE, QRCODE_UPDATED, PRESENCE_UPDATE,
-// CHATS_UPDATE, CONTACTS_UPDATE, CALL, etc.) are silently ignored.
-const MESSAGE_EVENTS = new Set([
-  "MESSAGES_UPSERT",
-  "messages.upsert",
-  "MESSAGES_UPDATE",
-  "messages.update",
-  "SEND_MESSAGE",
-  "send.message",
+// ─── Event denylist ───────────────────────────────────────────────────────────
+// These Evolution API events are known to never carry real message data.
+// Everything NOT in this list is allowed through to the content/phone validators.
+// Using a denylist (not an allowlist) avoids blocking events whose names vary
+// across Evolution API versions or configurations.
+const NON_MESSAGE_EVENTS = new Set([
+  "QRCODE_UPDATED",
+  "qrcode.updated",
+  "CONNECTION_UPDATE",
+  "connection.update",
+  "PRESENCE_UPDATE",
+  "presence.update",
+  "CHATS_UPDATE",
+  "chats.update",
+  "CHATS_SET",
+  "chats.set",
+  "CONTACTS_UPDATE",
+  "contacts.update",
+  "CONTACTS_SET",
+  "contacts.set",
+  "CALL",
+  "call",
+  "GROUPS_UPDATE",
+  "groups.update",
+  "GROUPS_UPSERT",
+  "groups.upsert",
+  "GROUP_PARTICIPANTS_UPDATE",
+  "group-participants.update",
+  "LABELS_EDIT",
+  "labels.edit",
+  "LABELS_ASSOCIATION",
+  "labels.association",
 ]);
 
 // ─── Phone validation ─────────────────────────────────────────────────────────
@@ -243,11 +264,11 @@ export async function processWhatsappWebhook(payload: unknown) {
   await ensureDefaultPipeline();
   const parsed = webhookMessageSchema.parse(payload);
 
-  // Gate 1: only process recognised message events.
-  // Events like CONNECTION_UPDATE, QRCODE_UPDATED, PRESENCE_UPDATE, etc.
-  // are silently accepted (200) without touching leads or messages.
+  // Gate 1: skip known non-message events (CONNECTION_UPDATE, QRCODE_UPDATED, etc.)
+  // Using a denylist so unknown/version-specific event names still pass through
+  // to the content+phone validators (Gates 2 & 3) which are the real protection.
   const event = parsed.event;
-  if (event && !MESSAGE_EVENTS.has(event)) {
+  if (event && NON_MESSAGE_EVENTS.has(event)) {
     console.log("[webhook] ignored non-message event:", event);
     return { ok: true, skipped: true, reason: "non_message_event", event };
   }
