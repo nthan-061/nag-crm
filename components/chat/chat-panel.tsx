@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { MessageCircleMore, PhoneCall } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { MessageCircleMore, PhoneCall, Trash2 } from "lucide-react";
 import { MessageInput } from "@/components/chat/message-input";
 import { MessageList } from "@/components/chat/message-list";
 import { NotesPanel } from "@/components/chat/notes-panel";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -12,10 +13,17 @@ import { REALTIME_CHANNEL } from "@/lib/constants";
 import { formatPhone } from "@/lib/utils";
 import type { KanbanCardRecord, Message } from "@/lib/types/database";
 
-export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | null }) {
+export function ChatPanel({
+  selectedCard,
+  onDeleteLead
+}: {
+  selectedCard: KanbanCardRecord | null;
+  onDeleteLead: (leadId: string) => Promise<void>;
+}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "notes">("chat");
+  const [isDeleting, startDeleteTransition] = useTransition();
   const latestRequestId = useRef(0);
 
   const loadMessages = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -105,6 +113,24 @@ export function ChatPanel({ selectedCard }: { selectedCard: KanbanCardRecord | n
             <div className="rounded-2xl border border-border bg-background/40 px-3 py-2 text-xs text-secondary">
               {selectedCard.lead_origem ?? "whatsapp"}
             </div>
+          </div>
+          <div className="mt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-danger hover:bg-danger/10 hover:text-danger"
+              disabled={isDeleting}
+              onClick={() => {
+                if (!selectedCard) return;
+                startDeleteTransition(() => {
+                  void onDeleteLead(selectedCard.lead_id);
+                });
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {isDeleting ? "Apagando lead..." : "Apagar lead"}
+            </Button>
           </div>
 
           <Separator className="my-5" />

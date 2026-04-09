@@ -16,6 +16,8 @@ export async function DELETE(
     }
 
     revalidatePath("/leads");
+    revalidatePath("/pipeline");
+    revalidatePath("/dashboard");
     return NextResponse.json(
       { ok: true, leadId: deletedLead.id },
       { headers: { "Cache-Control": "no-store, max-age=0" } }

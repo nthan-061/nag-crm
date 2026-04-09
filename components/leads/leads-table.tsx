@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { emitLeadDeleted } from "@/lib/lead-events";
 import { formatPhone } from "@/lib/utils";
 import type { Lead } from "@/lib/types/database";
 
@@ -54,6 +55,7 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
         }
 
         setLeads((current) => current.filter((lead) => lead.id !== leadId));
+        emitLeadDeleted(leadId);
         router.refresh();
       })();
     });
