@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { REALTIME_CHANNEL } from "@/lib/constants";
+import { LEAD_DELETED_STORAGE_KEY, emitLeadDeleted } from "@/lib/lead-events";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Column, KanbanCardRecord } from "@/lib/types/database";
 
@@ -73,6 +74,39 @@ export function CrmBoard({
     }
   }
 
+  async function handleDeleteLead(leadId: string) {
+    const card = cards.find((item) => item.lead_id === leadId);
+    const leadName = card?.lead_nome ?? "este lead";
+    if (!window.confirm(`Tem certeza que deseja apagar ${leadName}? Esta acao remove card e mensagens relacionadas.`)) {
+      return;
+    }
+
+    const previousCards = cards;
+    setCards((current) => current.filter((item) => item.lead_id !== leadId));
+
+    try {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: "DELETE",
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({ error: "Nao foi possivel apagar o lead." }))) as {
+          error?: string;
+        };
+        setCards(previousCards);
+        window.alert(payload.error ?? "Nao foi possivel apagar o lead.");
+        return;
+      }
+
+      emitLeadDeleted(leadId);
+      await refreshCards();
+    } catch {
+      setCards(previousCards);
+      window.alert("Nao foi possivel apagar o lead.");
+    }
+  }
+
   function handleDragStart(event: DragStartEvent) {
     setActiveCardId(event.active.id?.toString() ?? null);
   }
@@ -113,6 +147,12 @@ export function CrmBoard({
 
   const activeCard = cards.find((card) => card.card_id === activeCardId) ?? null;
 
+  // Fetch fresh cards immediately on mount — the SSR snapshot may be stale
+  // if the router served a cached version of the page (Next.js 14 client cache).
+  useEffect(() => {
+    void refreshCards();
+  }, []);
+
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     const channel = supabase
@@ -132,6 +172,16 @@ export function CrmBoard({
     }, 60000);
 
     return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== LEAD_DELETED_STORAGE_KEY || !event.newValue) return;
+      void refreshCards();
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   useEffect(() => {
@@ -236,7 +286,7 @@ export function CrmBoard({
       </div>
 
       <div className="min-h-[500px]">
-        <ChatPanel selectedCard={selectedCard} />
+        <ChatPanel selectedCard={selectedCard} onDeleteLead={handleDeleteLead} />
       </div>
     </div>
   );
