@@ -2,19 +2,34 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageSquare, Phone } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { PRIORITY_STYLES } from "@/lib/constants";
+import { Clock, Globe } from "lucide-react";
 import { cn, formatPhone, formatRelativeTime } from "@/lib/utils";
 import type { KanbanCardRecord } from "@/lib/types/database";
+
+const PRIORITY_BORDER: Record<string, string> = {
+  alta:  "border-l-danger",
+  media: "border-l-warning",
+  baixa: "border-l-success",
+};
+
+const PRIORITY_DOT: Record<string, string> = {
+  alta:  "bg-danger",
+  media: "bg-warning",
+  baixa: "bg-success",
+};
+
+const PRIORITY_LABEL: Record<string, string> = {
+  alta:  "Alta",
+  media: "Média",
+  baixa: "Baixa",
+};
 
 export function KanbanCard({
   card,
   isSelected,
   onSelect,
   draggable = true,
-  isOverlay = false
+  isOverlay = false,
 }: {
   card: KanbanCardRecord;
   isSelected: boolean;
@@ -25,51 +40,74 @@ export function KanbanCard({
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.card_id,
     data: { cardId: card.card_id, fromColumnId: card.coluna_id },
-    disabled: !draggable
+    disabled: !draggable,
   });
 
   const dragStyle = draggable ? { transform: CSS.Translate.toString(transform) } : undefined;
 
   return (
-    <Card
+    <div
       ref={setNodeRef}
       style={dragStyle}
       className={cn(
-        "border-white/5 p-4 transition hover:border-accent/30 hover:bg-white/[0.04]",
-        draggable && "cursor-grab",
-        isSelected && "border-accent/40 bg-accent/10",
-        isDragging && "opacity-30",
-        isOverlay && "rotate-1 border-accent/40 bg-card/95 shadow-2xl shadow-black/50 ring-1 ring-accent/20"
+        // Base
+        "glass-panel relative rounded-xl border border-l-[3px] border-border/50 p-4 transition-all duration-150",
+        // Priority left border
+        PRIORITY_BORDER[card.prioridade] ?? "border-l-border",
+        // Interactive states
+        draggable && "cursor-grab active:cursor-grabbing",
+        "hover:border-border-strong hover:shadow-premium",
+        // Selected state
+        isSelected && "border-accent/40 bg-accent/[0.06] shadow-glow",
+        // Drag states
+        isDragging && "opacity-30 scale-[0.98]",
+        isOverlay && "rotate-[0.5deg] shadow-elevated ring-1 ring-accent/20 opacity-95",
       )}
       {...(draggable ? listeners : {})}
       {...(draggable ? attributes : {})}
       onClick={() => onSelect(card.lead_id)}
     >
+      {/* ── Header: name + priority ────────────── */}
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground">{card.lead_nome}</p>
-          <div className="mt-1 flex items-center gap-1 text-xs text-secondary">
-            <Phone className="h-3 w-3" />
-            <span>{formatPhone(card.lead_telefone)}</span>
-          </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold leading-snug text-foreground">
+            {card.lead_nome}
+          </p>
+          <p className="mt-0.5 font-mono text-[11px] text-secondary/70">
+            {formatPhone(card.lead_telefone)}
+          </p>
         </div>
-        <Badge className={cn("capitalize", PRIORITY_STYLES[card.prioridade])}>{card.prioridade}</Badge>
+
+        <div className="flex flex-shrink-0 items-center gap-1.5 rounded-md border border-border/50 bg-surface/60 px-2 py-1">
+          <span className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", PRIORITY_DOT[card.prioridade])} />
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-secondary/80">
+            {PRIORITY_LABEL[card.prioridade]}
+          </span>
+        </div>
       </div>
 
-      <div className="mt-4 rounded-xl bg-background/60 p-3">
-        <div className="flex items-center gap-2 text-xs text-secondary">
-          <MessageSquare className="h-3 w-3" />
-          <span>Última mensagem</span>
-        </div>
-        <p className="mt-2 max-h-10 overflow-hidden text-sm text-foreground/90">
-          {card.ultima_mensagem ?? "Sem mensagens ainda"}
+      {/* ── Message preview ────────────────────── */}
+      {card.ultima_mensagem ? (
+        <p className="mt-3 line-clamp-2 rounded-lg bg-muted/60 px-3 py-2 text-[12px] leading-relaxed text-secondary/80">
+          {card.ultima_mensagem}
         </p>
-      </div>
+      ) : (
+        <p className="mt-3 rounded-lg border border-dashed border-border/40 px-3 py-2 text-[12px] italic text-tertiary">
+          Sem mensagens ainda
+        </p>
+      )}
 
-      <div className="mt-3 flex items-center justify-between text-xs text-secondary">
-        <span>{formatRelativeTime(card.ultima_interacao)}</span>
-        <span>{card.lead_origem ?? "manual"}</span>
+      {/* ── Footer: time + origin ──────────────── */}
+      <div className="mt-3 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-[11px] text-tertiary">
+          <Clock className="h-3 w-3" />
+          <span>{formatRelativeTime(card.ultima_interacao)}</span>
+        </div>
+        <div className="flex items-center gap-1 text-[11px] text-tertiary">
+          <Globe className="h-3 w-3" />
+          <span className="capitalize">{card.lead_origem ?? "manual"}</span>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 }

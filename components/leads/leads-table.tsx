@@ -2,11 +2,17 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Trash2, Users } from "lucide-react";
 import { emitLeadDeleted } from "@/lib/lead-events";
 import { formatPhone } from "@/lib/utils";
 import type { Lead } from "@/lib/types/database";
+
+const ORIGIN_LABEL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  manual: "Manual",
+  website: "Website",
+  api: "API",
+};
 
 export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
   const [leads, setLeads] = useState(initialLeads);
@@ -27,7 +33,6 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
       if (!response.ok) return;
       const payload = (await response.json()) as { data?: Lead[] };
       if (!Array.isArray(payload.data)) return;
-      // Merge: keep any already-deleted leads out of the new list
       setLeads(payload.data.filter((lead) => !deletingIds.current.has(lead.id)));
     } catch {
       // Keep current state if fetch fails
@@ -41,7 +46,6 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
 
     startTransition(() => {
       void (async () => {
-        // Optimistic: remove immediately and track the id so syncLeads won't restore it
         deletingIds.current.add(leadId);
         setLeads((current) => current.filter((lead) => lead.id !== leadId));
 
@@ -51,7 +55,6 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
         });
 
         if (!response.ok) {
-          // Rollback optimistic update on failure
           deletingIds.current.delete(leadId);
           await syncLeads();
           router.refresh();
@@ -62,52 +65,98 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
           return;
         }
 
-        // Delete confirmed — emit event so pipeline can refresh in background
         emitLeadDeleted(leadId);
         router.refresh();
-        // Clean up tracking after a short delay (allow any in-flight syncs to settle)
         setTimeout(() => { deletingIds.current.delete(leadId); }, 3000);
       })();
     });
   }
 
   return (
-    <Card className="p-6">
-      <p className="text-xs uppercase tracking-[0.3em] text-accent">Leads</p>
-      <h2 className="mt-2 text-3xl font-semibold text-foreground">Base de contatos</h2>
-      <div className="mt-6 overflow-hidden rounded-2xl border border-border">
-        <table className="min-w-full divide-y divide-border text-sm">
-          <thead className="bg-white/5 text-left text-secondary">
-            <tr>
-              <th className="px-4 py-3 font-medium">Nome</th>
-              <th className="px-4 py-3 font-medium">Telefone</th>
-              <th className="px-4 py-3 font-medium">Origem</th>
-              <th className="px-4 py-3 font-medium">Criado em</th>
-              <th className="px-4 py-3 font-medium">Acoes</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {leads.map((lead) => (
-              <tr key={lead.id} className="text-foreground/90">
-                <td className="px-4 py-3">{lead.nome}</td>
-                <td className="px-4 py-3">{formatPhone(lead.telefone)}</td>
-                <td className="px-4 py-3">{lead.origem ?? "manual"}</td>
-                <td className="px-4 py-3">{new Date(lead.criado_em).toLocaleString("pt-BR")}</td>
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    className="text-secondary transition hover:text-danger"
-                    onClick={() => handleDelete(lead.id)}
-                    disabled={isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="glass-panel rounded-2xl border border-border/50 shadow-card overflow-hidden">
+
+      {/* ── Header ────────────────────────────── */}
+      <div className="flex items-center justify-between border-b border-border/50 px-6 py-4">
+        <div>
+          <p className="label-overline">Contatos</p>
+          <h2 className="mt-1 text-lg font-bold tracking-tight text-foreground">
+            Base de leads
+          </h2>
+        </div>
+        <span className="flex items-center gap-2 rounded-lg border border-border/60 bg-surface/60 px-3 py-1.5 text-xs text-secondary/80">
+          <Users className="h-3.5 w-3.5" />
+          {leads.length} {leads.length === 1 ? "lead" : "leads"}
+        </span>
       </div>
-    </Card>
+
+      {/* ── Table ─────────────────────────────── */}
+      {leads.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-surface/40">
+            <Users className="h-5 w-5 text-secondary/40" />
+          </div>
+          <p className="mt-4 text-sm font-medium text-foreground/60">Nenhum lead ainda</p>
+          <p className="mt-1 text-xs text-secondary/50">
+            Leads criados via webhook ou manualmente aparecerão aqui.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border/30 text-sm">
+            <thead>
+              <tr className="bg-surface/30">
+                <th className="px-6 py-3 text-left">
+                  <span className="label-overline">Nome</span>
+                </th>
+                <th className="px-6 py-3 text-left">
+                  <span className="label-overline">Telefone</span>
+                </th>
+                <th className="px-6 py-3 text-left">
+                  <span className="label-overline">Origem</span>
+                </th>
+                <th className="px-6 py-3 text-left">
+                  <span className="label-overline">Criado em</span>
+                </th>
+                <th className="px-6 py-3 text-right">
+                  <span className="label-overline">Acao</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/20">
+              {leads.map((lead) => (
+                <tr key={lead.id} className="group transition-colors hover:bg-white/[0.025]">
+                  <td className="px-6 py-3.5">
+                    <span className="font-semibold text-foreground">{lead.nome}</span>
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <span className="font-mono text-xs text-secondary">{formatPhone(lead.telefone)}</span>
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <span className="rounded-md border border-border/50 bg-surface/60 px-2 py-0.5 text-xs text-secondary/80">
+                      {ORIGIN_LABEL[lead.origem ?? "manual"] ?? (lead.origem ?? "manual")}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <span className="text-secondary/70 text-xs">
+                      {new Date(lead.criado_em).toLocaleString("pt-BR")}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3.5 text-right">
+                    <button
+                      type="button"
+                      className="opacity-0 group-hover:opacity-100 text-tertiary transition-all hover:text-danger"
+                      onClick={() => handleDelete(lead.id)}
+                      disabled={isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

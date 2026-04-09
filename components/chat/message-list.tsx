@@ -15,24 +15,45 @@ export function MessageList({ messages, leadId }: { messages: Message[]; leadId:
     container.scrollTop = container.scrollHeight;
   }, [messages, leadId]);
 
+  if (messages.length === 0) {
+    return (
+      <div ref={containerRef} className="flex flex-1 items-center justify-center text-center p-6">
+        <div>
+          <p className="text-sm text-secondary/50">Nenhuma mensagem ainda.</p>
+          <p className="mt-1 text-xs text-tertiary">Envie a primeira mensagem abaixo.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div ref={containerRef} className="h-[calc(100vh-270px)] overflow-y-auto pr-4">
-      <div className="flex flex-col gap-3">
-        {messages.map((message) => (
+    <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2 min-h-0">
+      {messages.map((message) => (
+        <div
+          key={message.id}
+          className={cn(
+            "flex flex-col max-w-[82%]",
+            message.tipo === "saida" ? "ml-auto items-end" : "items-start"
+          )}
+        >
           <div
-            key={message.id}
             className={cn(
-              "max-w-[86%] rounded-[22px] px-4 py-3 text-sm shadow-premium",
-              message.tipo === "saida" ? "ml-auto bg-accent text-white" : "bg-card text-foreground"
+              "rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
+              message.tipo === "saida"
+                ? "rounded-br-sm bg-accent text-white"
+                : "rounded-bl-sm bg-surface border border-border/50 text-foreground"
             )}
           >
-            <p>{message.conteudo}</p>
-            <p className={cn("mt-2 text-[11px]", message.tipo === "saida" ? "text-white/70" : "text-secondary")}>
-              {format(new Date(message.timestamp), "HH:mm • dd/MM", { locale: ptBR })}
-            </p>
+            <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>
           </div>
-        ))}
-      </div>
+          <p className={cn(
+            "mt-1 px-1 text-[10px]",
+            message.tipo === "saida" ? "text-secondary/50" : "text-tertiary"
+          )}>
+            {format(new Date(message.timestamp), "HH:mm • dd/MM", { locale: ptBR })}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }

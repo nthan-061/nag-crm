@@ -1,30 +1,49 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, KanbanSquare, MessageSquareText, Settings } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { BarChart3, KanbanSquare, Users, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { label: "Dashboard", icon: BarChart3, href: "/dashboard" },
   { label: "Pipeline", icon: KanbanSquare, href: "/pipeline" },
-  { label: "Leads", icon: MessageSquareText, href: "/leads" },
-  { label: "Configuracoes", icon: Settings, href: "/settings" }
+  { label: "Leads", icon: Users, href: "/leads" },
+  { label: "Configuracoes", icon: Settings, href: "/settings" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <Card className="flex h-full flex-col gap-6 p-5">
-      <div>
-        <p className="text-xs uppercase tracking-[0.32em] text-accent">Nathan Alves Group</p>
-        <h1 className="mt-3 text-2xl font-semibold text-foreground">NAG CRM</h1>
-        <p className="mt-2 text-sm text-secondary">Operacao comercial com WhatsApp em tempo real.</p>
+    <aside className="sidebar-surface flex h-full flex-col rounded-2xl border border-border/60 overflow-hidden shadow-premium">
+
+      {/* ── Brand header ──────────────────────────── */}
+      <div className="px-5 pt-6 pb-5 border-b border-border/50">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-accent/25 bg-accent-muted/60">
+            <Image
+              src="/logo-white.png"
+              alt="Nathan Alves Group"
+              width={26}
+              height={26}
+              className="opacity-85 object-contain"
+            />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold tracking-tight text-foreground leading-none">
+              NAG CRM
+            </h1>
+            <p className="mt-1 text-[10px] font-semibold tracking-[0.18em] uppercase text-secondary/60 leading-none">
+              Nathan Alves Group
+            </p>
+          </div>
+        </div>
       </div>
 
-      <nav className="space-y-2">
+      {/* ── Navigation ────────────────────────────── */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5">
         {items.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -36,23 +55,40 @@ export function Sidebar() {
               key={item.label}
               href={item.href}
               className={cn(
-                "flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition",
+                "relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-150",
                 isActive
-                  ? "border-accent/30 bg-accent/10 text-foreground"
-                  : "border-transparent bg-transparent text-secondary hover:border-border hover:bg-white/5 hover:text-foreground"
+                  ? "bg-accent/12 text-foreground"
+                  : "text-secondary hover:bg-white/[0.04] hover:text-foreground/80"
               )}
             >
-              <Icon className="h-4 w-4" />
-              <span>{item.label}</span>
+              {/* Active indicator */}
+              {isActive && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-accent" />
+              )}
+              <Icon
+                className={cn(
+                  "h-4 w-4 flex-shrink-0 transition-colors",
+                  isActive ? "text-accent" : "text-secondary"
+                )}
+              />
+              <span className="leading-none">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-auto rounded-2xl border border-accent/20 bg-accent/10 p-4">
-        <p className="text-sm font-medium text-foreground">Webhook pronto para captar leads</p>
-        <p className="mt-1 text-xs text-secondary">Novas conversas entram direto em Entrada de Lead.</p>
+      {/* ── Status footer ─────────────────────────── */}
+      <div className="px-3 pb-4">
+        <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-success/[0.07] px-3.5 py-3">
+          <div className="flex-shrink-0 h-2 w-2 rounded-full bg-success live-dot" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-foreground leading-none">WhatsApp ativo</p>
+            <p className="mt-1 text-[11px] text-secondary/70 leading-none truncate">
+              Capturando leads em tempo real
+            </p>
+          </div>
+        </div>
       </div>
-    </Card>
+    </aside>
   );
 }

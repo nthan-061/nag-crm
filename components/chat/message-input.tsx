@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { SendHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 export function MessageInput({
@@ -41,7 +40,7 @@ export function MessageInput({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="relative">
       <Textarea
         value={value}
         onChange={(event) => setValue(event.target.value)}
@@ -51,13 +50,18 @@ export function MessageInput({
             void handleSubmit();
           }
         }}
-        placeholder={leadId ? "Responder conversa... (Enter para enviar, Shift+Enter para nova linha)" : "Selecione um card para responder"}
+        placeholder={leadId ? "Mensagem... (Enter para enviar)" : "Selecione um lead"}
         disabled={!leadId || isPending}
+        className="min-h-[80px] resize-none pr-12"
       />
-      <Button className="w-full" onClick={handleSubmit} disabled={!leadId || !value.trim() || isPending}>
-        <SendHorizontal className="mr-2 h-4 w-4" />
-        {isPending ? "Enviando..." : "Enviar mensagem"}
-      </Button>
+      <button
+        type="button"
+        onClick={() => void handleSubmit()}
+        disabled={!leadId || !value.trim() || isPending}
+        className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-xl bg-accent text-white transition-all hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed"
+      >
+        <SendHorizontal className="h-4 w-4" />
+      </button>
     </div>
   );
 }

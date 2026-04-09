@@ -236,25 +236,31 @@ export function CrmBoard({
   return (
     <div className="grid h-screen grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="min-w-0">
-        <div className="mb-4">
-          <p className="text-xs uppercase tracking-[0.3em] text-accent">Pipeline em tempo real</p>
-          <div className="mt-2 flex items-center justify-between gap-3">
+        <div className="mb-5">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h2 className="text-3xl font-semibold text-foreground">Kanban comercial</h2>
-              <p className="mt-2 text-sm text-secondary">
+              <p className="label-overline">Pipeline em tempo real</p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+                Kanban comercial
+              </h2>
+              <p className="mt-1.5 text-sm text-secondary">
                 Arraste cards entre etapas e acompanhe as conversas no painel lateral.
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-[280px]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-[260px]">
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Buscar lead, telefone ou mensagem"
                 />
               </div>
-              <Button variant="secondary" onClick={() => setShowColumnManager((current) => !current)}>
-                {showColumnManager ? "Fechar colunas" : "Editar colunas"}
+              <Button
+                variant="secondary"
+                className="whitespace-nowrap"
+                onClick={() => setShowColumnManager((current) => !current)}
+              >
+                {showColumnManager ? "Fechar" : "Editar colunas"}
               </Button>
             </div>
           </div>

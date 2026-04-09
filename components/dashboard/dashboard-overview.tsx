@@ -1,7 +1,7 @@
 import { AppFrame } from "@/components/layout/app-frame";
-import { Card } from "@/components/ui/card";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { formatPhone, formatRelativeTime } from "@/lib/utils";
+import { BarChart3, TrendingUp, Zap, MessageSquare } from "lucide-react";
 import type { DashboardData } from "@/lib/types/database";
 
 export function DashboardOverview({ data }: { data: DashboardData }) {
@@ -19,63 +19,130 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
 
   return (
     <AppFrame>
-      <div className="space-y-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-accent">Dashboard</p>
-          <h2 className="mt-2 text-3xl font-semibold text-foreground">Visao operacional</h2>
-          <p className="mt-2 text-sm text-secondary">
-            Acompanhe volume de leads, fila de entrada e atividade recente do CRM.
-          </p>
+      <div className="space-y-6">
+
+        {/* ── Page header ──────────────────────────────── */}
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="label-overline">Dashboard</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+              Visão operacional
+            </h2>
+            <p className="mt-1.5 text-sm text-secondary">
+              Volume de leads, fila de entrada e atividade recente do CRM.
+            </p>
+          </div>
+          <div className="hidden items-center gap-2 rounded-xl border border-border/60 bg-card px-3.5 py-2 text-xs text-secondary md:flex">
+            <div className="h-1.5 w-1.5 rounded-full bg-success live-dot" />
+            <span>Ao vivo</span>
+          </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* ── KPI grid ─────────────────────────────────── */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
             label="Leads ativos"
             value={String(totalLeads)}
-            helper="Total de cards visiveis no pipeline comercial."
+            helper="Total de cards visíveis no pipeline comercial."
+            icon={<BarChart3 className="h-4 w-4" />}
+            accent
           />
           <SummaryCard
             label="Entrada de lead"
             value={String(newLeads)}
-            helper="Contatos aguardando qualificacao na primeira coluna."
+            helper="Contatos aguardando qualificação na primeira etapa."
+            icon={<TrendingUp className="h-4 w-4" />}
           />
           <SummaryCard
             label="Alta prioridade"
             value={String(highPriority)}
             helper="Leads marcados como alta prioridade no pipeline."
+            icon={<Zap className="h-4 w-4" />}
           />
           <SummaryCard
             label="Sem mensagem"
             value={String(withoutMessage)}
-            helper="Leads que ainda nao receberam nenhuma mensagem."
+            helper="Leads que ainda não receberam nenhuma mensagem."
+            icon={<MessageSquare className="h-4 w-4" />}
           />
         </div>
 
-        <Card className="p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-accent">Atividade recente</p>
-          <div className="mt-5 overflow-hidden rounded-2xl border border-border">
-            <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-white/5 text-left text-secondary">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Lead</th>
-                  <th className="px-4 py-3 font-medium">Telefone</th>
-                  <th className="px-4 py-3 font-medium">Ultima mensagem</th>
-                  <th className="px-4 py-3 font-medium">Atualizacao</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {latestCards.map((card) => (
-                  <tr key={card.card_id}>
-                    <td className="px-4 py-3 text-foreground">{card.lead_nome}</td>
-                    <td className="px-4 py-3 text-secondary">{formatPhone(card.lead_telefone)}</td>
-                    <td className="px-4 py-3 text-secondary">{card.ultima_mensagem ?? "Sem mensagens"}</td>
-                    <td className="px-4 py-3 text-secondary">{formatRelativeTime(card.ultima_interacao)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* ── Activity feed ────────────────────────────── */}
+        <div className="glass-panel rounded-2xl border border-border/60 shadow-card overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border/50 px-6 py-4">
+            <div>
+              <p className="label-overline">Atividade recente</p>
+              <p className="mt-1 text-sm font-medium text-foreground">
+                Últimas interações no pipeline
+              </p>
+            </div>
+            <span className="rounded-lg border border-border/60 bg-surface/60 px-2.5 py-1 text-xs text-secondary">
+              {latestCards.length} registros
+            </span>
           </div>
-        </Card>
+
+          {latestCards.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-surface/40">
+                <BarChart3 className="h-5 w-5 text-secondary/50" />
+              </div>
+              <p className="mt-4 text-sm font-medium text-foreground/60">Sem atividade ainda</p>
+              <p className="mt-1 text-xs text-secondary/50">
+                Os leads aparecerão aqui conforme interações ocorrerem.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-border/40 text-sm">
+                <thead>
+                  <tr className="bg-surface/30">
+                    <th className="px-6 py-3 text-left">
+                      <span className="label-overline">Lead</span>
+                    </th>
+                    <th className="px-6 py-3 text-left">
+                      <span className="label-overline">Telefone</span>
+                    </th>
+                    <th className="px-6 py-3 text-left">
+                      <span className="label-overline">Última mensagem</span>
+                    </th>
+                    <th className="px-6 py-3 text-left">
+                      <span className="label-overline">Atualização</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {latestCards.map((card, i) => (
+                    <tr
+                      key={card.card_id}
+                      className="group transition-colors hover:bg-white/[0.025]"
+                      style={{ animationDelay: `${i * 30}ms` }}
+                    >
+                      <td className="px-6 py-3.5">
+                        <span className="font-semibold text-foreground">{card.lead_nome}</span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className="font-mono text-xs text-secondary">
+                          {formatPhone(card.lead_telefone)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5 max-w-[280px]">
+                        <span className="block truncate text-secondary">
+                          {card.ultima_mensagem ?? (
+                            <span className="text-tertiary italic">Sem mensagens</span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className="text-secondary/70">{formatRelativeTime(card.ultima_interacao)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </AppFrame>
   );

@@ -10,7 +10,7 @@ export function KanbanColumn({
   column,
   cards,
   selectedLeadId,
-  onSelectLead
+  onSelectLead,
 }: {
   column: Column;
   cards: KanbanCardRecord[];
@@ -23,22 +23,41 @@ export function KanbanColumn({
     <section
       ref={setNodeRef}
       className={cn(
-        "glass-panel flex h-full min-w-[320px] max-w-[320px] flex-col rounded-[28px] border p-4",
-        isOver && "border-accent/40 bg-accent/5"
+        "flex h-full min-w-[300px] max-w-[300px] flex-col rounded-2xl border border-border/50 transition-all duration-150",
+        "bg-[rgba(9,17,31,0.75)] backdrop-blur-sm",
+        isOver && "border-accent/35 bg-accent/[0.04] shadow-glow"
       )}
     >
-      <header className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="h-3 w-3 rounded-full" style={{ backgroundColor: column.cor ?? "#3B82F6" }} />
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">{column.nome}</h3>
-            <p className="text-xs text-secondary">{cards.length} cards</p>
-          </div>
+      {/* ── Column header ──────────────────────── */}
+      <header className="flex items-center justify-between px-4 py-3.5 border-b border-border/40">
+        <div className="flex items-center gap-2.5">
+          {/* Color indicator */}
+          <span
+            className="h-2.5 w-2.5 rounded-full flex-shrink-0 ring-1 ring-black/20"
+            style={{ backgroundColor: column.cor ?? "#2563EB" }}
+          />
+          <h3 className="text-sm font-semibold text-foreground leading-none">
+            {column.nome}
+          </h3>
         </div>
+        {/* Card count badge */}
+        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-md border border-border/60 bg-surface/60 px-1.5 text-[11px] font-bold text-secondary/80 tabular-nums">
+          {cards.length}
+        </span>
       </header>
 
-      <ScrollArea className="h-[calc(100vh-220px)]">
-        <div className="space-y-3 pr-3">
+      {/* ── Cards list ─────────────────────────── */}
+      <ScrollArea className="flex-1 h-[calc(100vh-200px)]">
+        <div className="space-y-2.5 p-3">
+          {cards.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div
+                className="h-8 w-8 rounded-full opacity-30"
+                style={{ backgroundColor: column.cor ?? "#2563EB", filter: "blur(8px)" }}
+              />
+              <p className="mt-3 text-xs text-tertiary">Nenhum lead aqui</p>
+            </div>
+          )}
           {cards.map((card) => (
             <KanbanCard
               key={card.card_id}
