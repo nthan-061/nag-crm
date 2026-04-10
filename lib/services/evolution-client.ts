@@ -73,8 +73,12 @@ export async function fetchInstanceChats(): Promise<EvolutionChat[]> {
   const response = await fetch(
     `${env.evolutionApiUrl}/chat/findChats/${encodeURIComponent(instanceName)}`,
     {
-      method: "GET",
-      headers: { apikey: env.evolutionApiKey },
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: env.evolutionApiKey,
+      },
+      body: JSON.stringify({}),
       cache: "no-store",
     }
   );
@@ -118,6 +122,17 @@ export async function fetchContactMessages(jid: string, limit = 50): Promise<Evo
   const data = await response.json();
   const messages = Array.isArray(data)
     ? data
-    : ((data as { messages?: EvolutionMessage[] })?.messages ?? []);
-  return messages as EvolutionMessage[];
+    : (
+        (data as { messages?: EvolutionMessage[] | { records?: EvolutionMessage[] } })?.messages
+      );
+
+  if (Array.isArray(messages)) {
+    return messages as EvolutionMessage[];
+  }
+
+  if (messages && typeof messages === "object" && Array.isArray((messages as { records?: EvolutionMessage[] }).records)) {
+    return (messages as { records: EvolutionMessage[] }).records;
+  }
+
+  return [];
 }
