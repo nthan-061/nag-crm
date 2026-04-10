@@ -148,7 +148,7 @@ export function ChatPanel({
         ) : activeTab === "chat" ? (
           <>
             <MessageList ref={messageListRef} messages={messages} leadId={selectedCard.lead_id} />
-            <div className="border-t border-border/40 p-4">
+            <div className="flex-shrink-0 border-t border-border/40 p-4">
               <MessageInput
                 leadId={selectedCard.lead_id}
                 onSent={async () => {
@@ -166,7 +166,7 @@ export function ChatPanel({
       </div>
 
       {/* ── Delete action ────────────────────────── */}
-      <div className="border-t border-border/30 px-4 py-3">
+      <div className="flex-shrink-0 border-t border-border/30 px-4 py-3">
         <Button
           type="button"
           variant="ghost"
