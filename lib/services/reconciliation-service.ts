@@ -80,9 +80,10 @@ export async function findMissingContacts(): Promise<MissingContact[]> {
 
   const missing: MissingContact[] = [];
   for (const chat of chats) {
-    if (!isPersonalJid(chat.id)) continue;
+    const jid = chat.remoteJid ?? null;
+    if (!jid || !isPersonalJid(jid)) continue;
 
-    const phone = normalizePhoneFromJid(chat.id);
+    const phone = normalizePhoneFromJid(jid);
     if (!phone) continue;
     if (existingPhones.has(phone)) continue;
 
@@ -93,7 +94,12 @@ export async function findMissingContacts(): Promise<MissingContact[]> {
           ? chat.lastMessage.messageTimestamp
           : null;
 
-    missing.push({ jid: chat.id, phone, name: chat.name ?? `+${phone}`, lastTimestamp: ts });
+    missing.push({
+      jid,
+      phone,
+      name: chat.name ?? chat.pushName ?? chat.profileName ?? `+${phone}`,
+      lastTimestamp: ts
+    });
   }
 
   missing.sort((a, b) => (b.lastTimestamp ?? 0) - (a.lastTimestamp ?? 0));

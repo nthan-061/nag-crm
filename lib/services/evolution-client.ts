@@ -3,8 +3,11 @@ import { getEnv } from "@/lib/env";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type EvolutionChat = {
-  id: string;
+  id?: string;
+  remoteJid?: string | null;
   name?: string;
+  pushName?: string | null;
+  profileName?: string | null;
   timestamp?: number;
   lastMessage?: {
     messageTimestamp?: number;
