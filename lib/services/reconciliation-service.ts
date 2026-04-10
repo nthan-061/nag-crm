@@ -38,12 +38,23 @@ export type ContactLookupResult = {
   hasCard: boolean;
   cardId: string | null;
   messageCount: number;
+  matchType: "exact" | "variant" | "suffix" | null;
+  possibleMatches: Array<{
+    source: "instance" | "crm";
+    phone: string;
+    name: string;
+    jid: string | null;
+    leadId: string | null;
+    hasCard: boolean;
+    matchType: "variant" | "suffix";
+  }>;
   status:
     | "missing_everywhere"
     | "instance_only"
     | "crm_only"
     | "crm_without_card"
-    | "synced";
+    | "synced"
+    | "possible_match";
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -58,6 +69,65 @@ function normalizePhoneInput(raw: string): string | null {
   const digits = raw.replace(/\D/g, "");
   if (digits.length < 8 || digits.length > 15) return null;
   return digits;
+}
+
+function generatePhoneVariants(digits: string): Set<string> {
+  const variants = new Set<string>([digits]);
+
+  function addBrazilianVariants(value: string) {
+    if (value.startsWith("55")) {
+      const local = value.slice(2);
+      variants.add(local);
+
+      if (local.length === 11) {
+        variants.add(`${local.slice(0, 2)}${local.slice(3)}`);
+      }
+      if (local.length === 10) {
+        variants.add(`${local.slice(0, 2)}9${local.slice(2)}`);
+      }
+    } else {
+      variants.add(`55${value}`);
+
+      if (value.length === 11) {
+        variants.add(`${value.slice(0, 2)}${value.slice(3)}`);
+        variants.add(`55${value.slice(0, 2)}${value.slice(3)}`);
+      }
+      if (value.length === 10) {
+        variants.add(`${value.slice(0, 2)}9${value.slice(2)}`);
+        variants.add(`55${value.slice(0, 2)}9${value.slice(2)}`);
+      }
+    }
+  }
+
+  addBrazilianVariants(digits);
+  return variants;
+}
+
+function getSuffixes(digits: string): string[] {
+  return [digits.slice(-11), digits.slice(-10), digits.slice(-9), digits.slice(-8)].filter(
+    (value) => value.length >= 8
+  );
+}
+
+function getPhoneMatchType(inputDigits: string, candidateDigits: string): "exact" | "variant" | "suffix" | null {
+  if (inputDigits === candidateDigits) return "exact";
+
+  const inputVariants = generatePhoneVariants(inputDigits);
+  const candidateVariants = generatePhoneVariants(candidateDigits);
+  if ([...inputVariants].some((value) => candidateVariants.has(value))) {
+    return "variant";
+  }
+
+  const inputSuffixes = getSuffixes(inputDigits);
+  const candidateSuffixes = getSuffixes(candidateDigits);
+  if (
+    inputSuffixes.some((suffix) => candidateDigits.endsWith(suffix)) ||
+    candidateSuffixes.some((suffix) => inputDigits.endsWith(suffix))
+  ) {
+    return "suffix";
+  }
+
+  return null;
 }
 
 function isPersonalJid(jid: string): boolean {
@@ -142,47 +212,105 @@ export async function lookupContact(phoneInput: string): Promise<ContactLookupRe
   }
 
   const chats = await fetchInstanceChats();
-  const matchedChat = chats.find((chat) => {
-    const jid = chat.remoteJid ?? null;
-    if (!jid || !isPersonalJid(jid)) return false;
-    return normalizePhoneFromJid(jid) === normalizedPhone;
-  });
+  const matchedChats = chats
+    .map((chat) => {
+      const jid = chat.remoteJid ?? null;
+      if (!jid || !isPersonalJid(jid)) return null;
+      const phone = normalizePhoneFromJid(jid);
+      if (!phone) return null;
+      const matchType = getPhoneMatchType(normalizedPhone, phone);
+      if (!matchType) return null;
+      return { chat, jid, phone, matchType };
+    })
+    .filter(
+      (
+        item
+      ): item is {
+        chat: Awaited<ReturnType<typeof fetchInstanceChats>>[number];
+        jid: string;
+        phone: string;
+        matchType: "exact" | "variant" | "suffix";
+      } => item !== null
+    )
+    .sort((a, b) => {
+      const score = { exact: 0, variant: 1, suffix: 2 };
+      return score[a.matchType] - score[b.matchType];
+    });
+
+  const matchedChat = matchedChats.find((item) => item.matchType === "exact") ?? matchedChats[0] ?? null;
 
   const supabase = createSupabaseAdminClient();
-  const { data: lead, error: leadError } = await supabase
+  const { data: leads, error: leadsError } = await supabase
     .from("leads")
-    .select("id, nome, deleted_at")
-    .eq("telefone", normalizedPhone)
-    .maybeSingle();
-  if (leadError) throw leadError;
+    .select("id, nome, telefone, deleted_at")
+    .order("criado_em", { ascending: false });
+  if (leadsError) throw leadsError;
 
-  let cardId: string | null = null;
-  if (lead?.id) {
-    const { data: card, error: cardError } = await supabase
-      .from("cards")
-      .select("id")
-      .eq("lead_id", lead.id)
-      .maybeSingle();
-    if (cardError) throw cardError;
-    cardId = card?.id ?? null;
-  }
+  const { data: cards, error: cardsError } = await supabase
+    .from("cards")
+    .select("id, lead_id");
+  if (cardsError) throw cardsError;
+
+  const cardByLeadId = new Map((cards ?? []).map((card) => [card.lead_id, card.id]));
+
+  const matchedLeads = (leads ?? [])
+    .map((lead) => {
+      const matchType = getPhoneMatchType(normalizedPhone, lead.telefone);
+      if (!matchType) return null;
+      return {
+        lead,
+        matchType,
+        hasCard: cardByLeadId.has(lead.id),
+        cardId: cardByLeadId.get(lead.id) ?? null,
+      };
+    })
+    .filter(
+      (
+        item
+      ): item is {
+        lead: {
+          id: string;
+          nome: string;
+          telefone: string;
+          deleted_at: string | null;
+        };
+        matchType: "exact" | "variant" | "suffix";
+        hasCard: boolean;
+        cardId: string | null;
+      } => item !== null
+    )
+    .sort((a, b) => {
+      const score = { exact: 0, variant: 1, suffix: 2 };
+      return score[a.matchType] - score[b.matchType];
+    });
+
+  const matchedLead = matchedLeads.find((item) => item.matchType === "exact") ?? matchedLeads[0] ?? null;
 
   let messageCount = 0;
-  if (lead?.id) {
+  if (matchedLead?.lead.id) {
     const { count, error: messageError } = await supabase
       .from("messages")
       .select("id", { count: "exact", head: true })
-      .eq("lead_id", lead.id);
+      .eq("lead_id", matchedLead.lead.id);
     if (messageError) throw messageError;
     messageCount = count ?? 0;
   }
 
   const foundInInstance = !!matchedChat;
-  const foundInCrm = !!lead;
-  const hasCard = !!cardId;
+  const foundInCrm = !!matchedLead;
+  const hasCard = !!matchedLead?.hasCard;
+  const cardId = matchedLead?.cardId ?? null;
+  const matchType =
+    matchedLead?.matchType === "exact"
+      ? matchedLead.matchType
+      : matchedChat?.matchType === "exact"
+        ? matchedChat.matchType
+        : matchedLead?.matchType ?? matchedChat?.matchType ?? null;
 
   let status: ContactLookupResult["status"];
-  if (foundInInstance && foundInCrm && hasCard) {
+  if (matchType && matchType !== "exact") {
+    status = "possible_match";
+  } else if (foundInInstance && foundInCrm && hasCard) {
     status = "synced";
   } else if (foundInInstance && foundInCrm && !hasCard) {
     status = "crm_without_card";
@@ -198,24 +326,51 @@ export async function lookupContact(phoneInput: string): Promise<ContactLookupRe
     normalizedPhone,
     foundInInstance,
     foundInCrm,
-    jid: matchedChat?.remoteJid ?? null,
-    instanceName: matchedChat?.name ?? matchedChat?.pushName ?? matchedChat?.profileName ?? null,
+    jid: matchedChat?.jid ?? null,
+    instanceName: matchedChat?.chat.name ?? matchedChat?.chat.pushName ?? matchedChat?.chat.profileName ?? null,
     lastTimestamp:
-      typeof matchedChat?.timestamp === "number"
-        ? matchedChat.timestamp
-        : typeof matchedChat?.lastMessage?.messageTimestamp === "number"
-          ? matchedChat.lastMessage.messageTimestamp
+      typeof matchedChat?.chat.timestamp === "number"
+        ? matchedChat.chat.timestamp
+        : typeof matchedChat?.chat.lastMessage?.messageTimestamp === "number"
+          ? matchedChat.chat.lastMessage.messageTimestamp
           : null,
-    lead: lead
+    lead: matchedLead?.lead
       ? {
-          id: lead.id,
-          nome: lead.nome,
-          deletedAt: lead.deleted_at,
+          id: matchedLead.lead.id,
+          nome: matchedLead.lead.nome,
+          deletedAt: matchedLead.lead.deleted_at,
         }
       : null,
     hasCard,
     cardId,
     messageCount,
+    matchType,
+    possibleMatches: [
+      ...matchedChats
+        .filter((item) => item.matchType !== "exact")
+        .slice(0, 5)
+        .map((item) => ({
+          source: "instance" as const,
+          phone: item.phone,
+          name: item.chat.name ?? item.chat.pushName ?? item.chat.profileName ?? `+${item.phone}`,
+          jid: item.jid,
+          leadId: null,
+          hasCard: false,
+          matchType: item.matchType as "variant" | "suffix",
+        })),
+      ...matchedLeads
+        .filter((item) => item.matchType !== "exact")
+        .slice(0, 5)
+        .map((item) => ({
+          source: "crm" as const,
+          phone: item.lead.telefone,
+          name: item.lead.nome,
+          jid: null,
+          leadId: item.lead.id,
+          hasCard: item.hasCard,
+          matchType: item.matchType as "variant" | "suffix",
+        })),
+    ],
     status,
   };
 }
