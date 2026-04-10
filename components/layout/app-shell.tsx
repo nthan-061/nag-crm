@@ -4,8 +4,8 @@ import type { DashboardData } from "@/lib/types/database";
 
 export function AppShell({ initialData }: { initialData: DashboardData }) {
   return (
-    <AppFrame>
-      <div>
+    <AppFrame contained>
+      <div className="h-full">
         <CrmBoard initialColumns={initialData.columns} initialCards={initialData.cards} />
       </div>
     </AppFrame>

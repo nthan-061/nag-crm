@@ -235,7 +235,7 @@ export function CrmBoard({
   const selectedCard = cards.find((card) => card.lead_id === selectedLeadId) ?? null;
 
   return (
-    <div className="grid h-screen grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="min-w-0">
         <div className="mb-5">
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -301,7 +301,7 @@ export function CrmBoard({
         </DndContext>
       </div>
 
-      <div className="min-h-[500px]">
+      <div className="h-full min-h-0">
         <ChatPanel selectedCard={selectedCard} onDeleteLead={handleDeleteLead} />
       </div>
     </div>
