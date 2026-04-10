@@ -4,7 +4,8 @@ import { useState } from "react";
 import { AlertCircle, Download, Phone, RefreshCw, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { MissingContact } from "@/lib/services/reconciliation-service";
+import { Input } from "@/components/ui/input";
+import type { ContactLookupResult, MissingContact } from "@/lib/services/reconciliation-service";
 
 type ImportState = "idle" | "importing" | "done" | "error";
 
@@ -15,8 +16,11 @@ type ContactState = {
 
 export function ReconciliationPanel() {
   const [loading, setLoading] = useState(false);
+  const [lookupLoading, setLookupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contacts, setContacts] = useState<MissingContact[] | null>(null);
+  const [lookupPhone, setLookupPhone] = useState("");
+  const [lookupResult, setLookupResult] = useState<ContactLookupResult | null>(null);
   const [importStates, setImportStates] = useState<Record<string, ContactState>>({});
   const [bulkImporting, setBulkImporting] = useState(false);
 
@@ -38,6 +42,30 @@ export function ReconciliationPanel() {
       setError("Nao foi possivel conectar a Evolution API. Verifique as variaveis de ambiente.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function checkPhone() {
+    if (!lookupPhone.trim()) return;
+
+    setLookupLoading(true);
+    setError(null);
+    setLookupResult(null);
+
+    try {
+      const response = await fetch(`/api/reconciliation?phone=${encodeURIComponent(lookupPhone)}`, {
+        cache: "no-store",
+      });
+      const payload = (await response.json()) as { data?: ContactLookupResult; error?: string };
+      if (!response.ok || payload.error) {
+        setError(payload.error ?? "Falha ao consultar numero");
+        return;
+      }
+      setLookupResult(payload.data ?? null);
+    } catch {
+      setError("Nao foi possivel consultar o numero agora.");
+    } finally {
+      setLookupLoading(false);
     }
   }
 
@@ -118,6 +146,79 @@ export function ReconciliationPanel() {
               ? "Importando..."
               : `Importar todos (${pendingContacts.length})`}
           </Button>
+        )}
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-border/40 bg-surface/25 p-4">
+        <p className="text-xs uppercase tracking-[0.24em] text-accent/80">Busca manual</p>
+        <p className="mt-2 text-sm text-secondary">
+          Consulte um numero especifico para descobrir se ele esta na instancia, no CRM, no pipeline
+          ou se existe como lead sem card.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          <div className="min-w-[240px] flex-1">
+            <Input
+              placeholder="Ex.: 5511976896161"
+              value={lookupPhone}
+              onChange={(event) => setLookupPhone(event.target.value)}
+            />
+          </div>
+          <Button variant="secondary" onClick={checkPhone} disabled={lookupLoading}>
+            <Phone className="mr-2 h-4 w-4" />
+            {lookupLoading ? "Consultando..." : "Consultar numero"}
+          </Button>
+        </div>
+
+        {lookupResult && (
+          <div className="mt-4 rounded-xl border border-border/40 bg-background/30 px-4 py-4 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-foreground">{lookupResult.normalizedPhone}</span>
+              <span className="rounded-md border border-border/50 px-2 py-0.5 text-xs text-secondary">
+                {lookupResult.status === "synced" && "Sincronizado"}
+                {lookupResult.status === "instance_only" && "So na instancia"}
+                {lookupResult.status === "crm_only" && "So no CRM"}
+                {lookupResult.status === "crm_without_card" && "CRM sem card"}
+                {lookupResult.status === "missing_everywhere" && "Nao encontrado"}
+              </span>
+            </div>
+
+            <div className="mt-3 grid gap-2 text-secondary sm:grid-cols-2">
+              <p>Instancia: {lookupResult.foundInInstance ? "sim" : "nao"}</p>
+              <p>CRM: {lookupResult.foundInCrm ? "sim" : "nao"}</p>
+              <p>Pipeline/card: {lookupResult.hasCard ? "sim" : "nao"}</p>
+              <p>Mensagens no CRM: {lookupResult.messageCount}</p>
+            </div>
+
+            {lookupResult.instanceName && (
+              <p className="mt-3 text-secondary">
+                Nome na instancia: <span className="text-foreground">{lookupResult.instanceName}</span>
+              </p>
+            )}
+
+            {lookupResult.lead && (
+              <p className="mt-1 text-secondary">
+                Lead no CRM: <span className="text-foreground">{lookupResult.lead.nome}</span>
+              </p>
+            )}
+
+            {lookupResult.status === "instance_only" && lookupResult.jid && (
+              <div className="mt-4">
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    void importOne({
+                      jid: lookupResult.jid!,
+                      phone: lookupResult.normalizedPhone,
+                      name: lookupResult.instanceName ?? `+${lookupResult.normalizedPhone}`,
+                      lastTimestamp: lookupResult.lastTimestamp,
+                    })
+                  }
+                >
+                  Importar este contato
+                </Button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
