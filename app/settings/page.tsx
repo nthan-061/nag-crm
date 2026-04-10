@@ -1,5 +1,6 @@
 import { AppFrame } from "@/components/layout/app-frame";
 import { Card } from "@/components/ui/card";
+import { ReconciliationPanel } from "@/components/settings/reconciliation-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,10 @@ export default function SettingsPage() {
             Esta area pode receber configuracoes de equipe, integrações e observabilidade.
           </p>
         </Card>
+      </div>
+
+      <div className="mt-4">
+        <ReconciliationPanel />
       </div>
     </AppFrame>
   );

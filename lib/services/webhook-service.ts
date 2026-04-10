@@ -153,7 +153,26 @@ function extractMessageContent(
   if (payload.contactMessage) return "[Contato recebido]";
   if (payload.locationMessage) return "[Localizacao recebida]";
 
-  // Anything else (reactions, protocol messages, status updates, etc.)
+  // Interactive response messages — contacts who tap buttons/polls count as leads
+  const reaction = payload.reactionMessage as { text?: string } | undefined;
+  if (reaction?.text) return `[Reagiu: ${reaction.text}]`;
+  if (payload.reactionMessage) return "[Reacao recebida]";
+
+  const buttonResponse = payload.buttonsResponseMessage as { selectedDisplayText?: string } | undefined;
+  if (buttonResponse?.selectedDisplayText) return `[Respondeu: ${buttonResponse.selectedDisplayText}]`;
+
+  const listResponse = payload.listResponseMessage as { title?: string } | undefined;
+  if (listResponse?.title) return `[Selecionou: ${listResponse.title}]`;
+
+  const templateReply = payload.templateButtonReplyMessage as { selectedDisplayText?: string } | undefined;
+  if (templateReply?.selectedDisplayText) return `[Respondeu: ${templateReply.selectedDisplayText}]`;
+
+  const pollCreation = payload.pollCreationMessage as { name?: string } | undefined;
+  if (pollCreation?.name) return `[Enquete: ${pollCreation.name}]`;
+
+  if (payload.pollUpdateMessage) return "[Votou em enquete]";
+
+  // Anything else (protocol messages, status updates, etc.)
   // — return null so the event is ignored without creating data
   return null;
 }
@@ -356,8 +375,9 @@ export async function processWhatsappWebhook(payload: unknown) {
         ultima_interacao: timestamp,
       });
       console.log("[webhook] new lead created:", lead.id, telefone);
-    } catch {
-      // Race condition: another webhook already created the lead
+    } catch (err) {
+      // Race condition: another request already created the lead concurrently.
+      console.warn("[webhook] race or error creating lead/card:", err instanceof Error ? err.message : String(err));
       lead = await findLeadByPhone(telefone);
     }
   }
@@ -372,6 +392,22 @@ export async function processWhatsappWebhook(payload: unknown) {
     .select("id, coluna_id")
     .eq("lead_id", lead.id)
     .maybeSingle();
+
+  // Recovery: lead exists but has no card — create one now so it appears in Kanban.
+  if (!card) {
+    console.warn("[webhook] lead exists without card, recovering:", lead.id);
+    try {
+      const entryColumnId = await getEntryColumnId();
+      await createCard({
+        lead_id: lead.id,
+        coluna_id: entryColumnId,
+        prioridade: "media",
+        ultima_interacao: timestamp,
+      });
+    } catch (err) {
+      console.warn("[webhook] failed to recover missing card:", err instanceof Error ? err.message : String(err));
+    }
+  }
 
   const createdMessage = await createMessage({
     lead_id: lead.id,

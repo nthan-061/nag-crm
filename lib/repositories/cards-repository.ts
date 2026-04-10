@@ -1,14 +1,51 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isLeadNote } from "@/lib/notes";
+import { ensureDefaultPipeline } from "@/lib/repositories/pipeline-repository";
 import type { KanbanCardRecord } from "@/lib/types/database";
 
 export async function listCards(): Promise<KanbanCardRecord[]> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("kanban_cards_view")
-    .select("*")
-    .order("ultima_interacao", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const [{ data: cards, error: cardsError }, { data: leads, error: leadsError }, { data: messages, error: messagesError }] =
+    await Promise.all([
+      supabase.from("cards").select("*").order("ultima_interacao", { ascending: false }),
+      supabase.from("leads").select("*").is("deleted_at", null),
+      supabase.from("messages").select("*").order("timestamp", { ascending: false })
+    ]);
+
+  if (cardsError) throw cardsError;
+  if (leadsError) throw leadsError;
+  if (messagesError) throw messagesError;
+
+  const leadById = new Map((leads ?? []).map((lead) => [lead.id, lead]));
+  const latestMessageByLeadId = new Map<string, string | null>();
+
+  for (const message of messages ?? []) {
+    if (isLeadNote(message.conteudo)) continue;
+    if (!latestMessageByLeadId.has(message.lead_id)) {
+      latestMessageByLeadId.set(message.lead_id, message.conteudo);
+    }
+  }
+
+  return (cards ?? [])
+    .map((card) => {
+      const lead = leadById.get(card.lead_id);
+      if (!lead) return null;
+
+      return {
+        card_id: card.id,
+        coluna_id: card.coluna_id,
+        prioridade: card.prioridade,
+        responsavel: card.responsavel,
+        ultima_interacao: card.ultima_interacao,
+        criado_em: card.criado_em,
+        lead_id: lead.id,
+        lead_nome: lead.nome,
+        lead_telefone: lead.telefone,
+        lead_origem: lead.origem,
+        ultima_mensagem: latestMessageByLeadId.get(lead.id) ?? null
+      } satisfies KanbanCardRecord;
+    })
+    .filter((card): card is KanbanCardRecord => card !== null);
 }
 
 export async function createCard(input: {
@@ -44,16 +81,33 @@ export async function touchCard(cardId: string, timestamp: string) {
   if (error) throw error;
 }
 
-export async function getEntryColumnId() {
+export async function getEntryColumnId(): Promise<string> {
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+
+  // Try to find a column still named "Entrada de Lead" — works for default setups.
+  const { data: named, error: namedError } = await supabase
     .from("columns")
     .select("id")
     .eq("nome", "Entrada de Lead")
     .order("ordem")
     .limit(1)
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
-  return data.id;
+  if (namedError) throw namedError;
+  if (named) return named.id;
+
+  // Fallback: whoever renamed or deleted that column — use the first column
+  // by order within the default pipeline so leads are never lost.
+  const pipelineId = await ensureDefaultPipeline();
+  const { data: first, error: firstError } = await supabase
+    .from("columns")
+    .select("id")
+    .eq("pipeline_id", pipelineId)
+    .order("ordem")
+    .limit(1)
+    .maybeSingle();
+
+  if (firstError) throw firstError;
+  if (!first) throw new Error("Nenhuma coluna encontrada no pipeline");
+  return first.id;
 }

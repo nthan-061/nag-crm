@@ -2,42 +2,11 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getEnv } from "@/lib/env";
 import { touchCard } from "@/lib/repositories/cards-repository";
 import { createMessage, listMessagesByLead } from "@/lib/repositories/messages-repository";
+import { resolveInstanceName } from "@/lib/services/evolution-client";
 import { sendMessageSchema } from "@/lib/validations/messages";
 
 export async function getMessages(leadId: string) {
   return listMessagesByLead(leadId);
-}
-
-async function resolveEvolutionInstanceName() {
-  const env = getEnv();
-  if (!env.evolutionApiUrl || !env.evolutionApiKey || !env.evolutionInstance) {
-    return null;
-  }
-
-  const response = await fetch(`${env.evolutionApiUrl}/instance/fetchInstances`, {
-    headers: {
-      apikey: env.evolutionApiKey
-    },
-    cache: "no-store"
-  });
-
-  if (!response.ok) {
-    throw new Error("Nao foi possivel consultar as instancias da Evolution");
-  }
-
-  const instances = (await response.json()) as Array<{
-    id?: string;
-    name?: string;
-    token?: string;
-  }>;
-
-  const normalized = env.evolutionInstance;
-  const matched =
-    instances.find((instance) => instance.name === normalized) ??
-    instances.find((instance) => instance.token === normalized) ??
-    instances.find((instance) => instance.id === normalized);
-
-  return matched?.name ?? normalized;
 }
 
 export async function sendMessage(payload: unknown) {
@@ -50,7 +19,7 @@ export async function sendMessage(payload: unknown) {
   const { data: lead } = await supabase.from("leads").select("telefone").eq("id", parsed.leadId).maybeSingle();
 
   if (lead?.telefone && env.evolutionApiUrl && env.evolutionApiKey && env.evolutionInstance) {
-    const instanceName = await resolveEvolutionInstanceName();
+    const instanceName = await resolveInstanceName();
     const response = await fetch(
       `${env.evolutionApiUrl}/message/sendText/${encodeURIComponent(instanceName ?? env.evolutionInstance)}`,
       {
