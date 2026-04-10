@@ -301,7 +301,11 @@ export function CrmBoard({
         </DndContext>
       </div>
 
-      <div className="h-full min-h-0">
+      {/* Explicit viewport-relative height so ChatPanel.h-full has a
+          concrete value to inherit — bypasses the fragile h-full cascade
+          through grid tracks. Matches AppFrame padding: p-4 mobile (2×16px),
+          md:p-5 desktop (2×20px). */}
+      <div className="h-[calc(100vh-2rem)] md:h-[calc(100vh-2.5rem)] min-h-0">
         <ChatPanel selectedCard={selectedCard} onDeleteLead={handleDeleteLead} />
       </div>
     </div>
