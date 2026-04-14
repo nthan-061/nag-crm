@@ -115,7 +115,7 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
                   {latestCards.map((card, i) => (
                     <tr
                       key={card.card_id}
-                      className="group transition-colors hover:bg-white/[0.025]"
+                      className="group transition-colors hover:bg-accent/[0.035]"
                       style={{ animationDelay: `${i * 30}ms` }}
                     >
                       <td className="px-6 py-3.5">

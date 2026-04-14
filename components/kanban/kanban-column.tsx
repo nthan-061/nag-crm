@@ -24,7 +24,7 @@ export function KanbanColumn({
       ref={setNodeRef}
       className={cn(
         "flex h-full min-w-[300px] max-w-[300px] flex-col rounded-2xl border border-border/50 transition-all duration-150",
-        "bg-[rgba(9,17,31,0.75)] backdrop-blur-sm",
+        "bg-white/70 backdrop-blur-sm shadow-card",
         isOver && "border-accent/35 bg-accent/[0.04] shadow-glow"
       )}
     >
@@ -33,7 +33,7 @@ export function KanbanColumn({
         <div className="flex items-center gap-2.5">
           {/* Color indicator */}
           <span
-            className="h-2.5 w-2.5 rounded-full flex-shrink-0 ring-1 ring-black/20"
+            className="h-2.5 w-2.5 rounded-full flex-shrink-0 ring-1 ring-primary/15"
             style={{ backgroundColor: column.cor ?? "#2563EB" }}
           />
           <h3 className="text-sm font-semibold text-foreground leading-none">

@@ -33,7 +33,7 @@ export function ActivityDialog({
           </div>
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-secondary transition hover:bg-white/[0.05] hover:text-foreground"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-secondary transition hover:bg-accent/[0.06] hover:text-foreground"
             onClick={onClose}
             aria-label="Fechar"
           >

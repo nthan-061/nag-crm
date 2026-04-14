@@ -3,72 +3,84 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * {
-  border-color: rgba(99, 131, 199, 0.14);
+  border-color: rgba(13, 32, 71, 0.13);
 }
 
 html,
 body {
   min-height: 100%;
-  background: #060B14;
-  color: #EEF2FF;
+  background: #f6f8fc;
+  color: #07162f;
 }
 
 body {
   background-image:
-    radial-gradient(ellipse 100% 60% at 50% -10%, rgba(30, 64, 175, 0.10), transparent),
-    radial-gradient(ellipse 70% 50% at 90% 90%, rgba(13, 27, 62, 0.35), transparent);
+    radial-gradient(ellipse 80% 46% at 50% -12%, rgba(13, 59, 134, 0.12), transparent),
+    radial-gradient(ellipse 64% 42% at 96% 8%, rgba(13, 32, 71, 0.08), transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 248, 252, 0.98));
 }
 
-/* ── Surface components ────────────────────────────────────── */
 .glass-panel {
-  background: rgba(12, 21, 38, 0.92);
-  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
 }
 
 .sidebar-surface {
-  background: rgba(8, 14, 26, 0.97);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(24px);
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 131, 199, 0.18);
+  background: rgba(13, 32, 71, 0.18);
   border-radius: 99px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 131, 199, 0.32);
+  background: rgba(13, 32, 71, 0.32);
 }
 
-/* ── Typography utilities ──────────────────────────────────── */
 .label-overline {
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #7E92B8;
+  color: #0d3b86;
 }
 
-/* ── Priority left border helper ──────────────────────────── */
-.priority-alta   { border-left: 3px solid #DC2626; }
-.priority-media  { border-left: 3px solid #D97706; }
-.priority-baixa  { border-left: 3px solid #059669; }
+.priority-alta {
+  border-left: 3px solid #dc2626;
+}
 
-/* ── Live pulse ────────────────────────────────────────────── */
+.priority-media {
+  border-left: 3px solid #d97706;
+}
+
+.priority-baixa {
+  border-left: 3px solid #059669;
+}
+
 @keyframes live-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
+
 .live-dot {
   animation: live-pulse 2s ease-in-out infinite;
 }

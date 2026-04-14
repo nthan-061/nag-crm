@@ -6,31 +6,27 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // ── Core surfaces ──────────────────────────────────────────
-        background: "#060B14",       // deep midnight navy — brand-aligned, not generic black
-        foreground: "#EEF2FF",       // blue-tinted white — warmer than pure white
-        card: "#0C1526",             // rich dark navy surface
-        "card-hover": "#0F1B30",     // card hover state
-        surface: "#0F1A30",          // elevated surface
-        primary: "#0D2047",          // deep brand navy
-        muted: "#09111F",            // darkest fill
-        // ── Brand palette ──────────────────────────────────────────
-        accent: "#2563EB",           // institutional blue
-        "accent-hover": "#1D55D4",   // accent hover
-        "accent-muted": "#1E3A70",   // accent subtle bg
-        navy: "#0D1B3E",             // deepest brand navy
-        // ── Text ────────────────────────────────────────────────────
-        secondary: "#7E92B8",        // muted blue-grey text
-        tertiary: "#4E617F",         // very muted text
-        // ── Utility ─────────────────────────────────────────────────
-        border: "rgba(99, 131, 199, 0.14)",
-        "border-strong": "rgba(99, 131, 199, 0.28)",
+        background: "#F6F8FC",
+        foreground: "#07162F",
+        card: "#FFFFFF",
+        "card-hover": "#F8FAFE",
+        surface: "#EEF3FA",
+        primary: "#0D2047",
+        muted: "#E7EDF6",
+        accent: "#0D3B86",
+        "accent-hover": "#0A2E68",
+        "accent-muted": "#DCE8F8",
+        navy: "#07162F",
+        secondary: "#52647E",
+        tertiary: "#7B8CA5",
+        border: "rgba(13, 32, 71, 0.13)",
+        "border-strong": "rgba(13, 32, 71, 0.26)",
         success: "#059669",
         warning: "#D97706",
         danger: "#DC2626",
-        "success-muted": "#064E3B",
-        "warning-muted": "#451A03",
-        "danger-muted": "#450A0A",
+        "success-muted": "#DFF7EC",
+        "warning-muted": "#FFF1D7",
+        "danger-muted": "#FEE2E2",
       },
       borderRadius: {
         sm: "0.375rem",
@@ -42,11 +38,11 @@ const config: Config = {
         "4xl": "1.5rem",
       },
       boxShadow: {
-        premium: "0 4px 24px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3)",
-        card: "0 2px 8px rgba(0, 0, 0, 0.25)",
-        elevated: "0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3)",
-        glow: "0 0 24px rgba(37, 99, 235, 0.22)",
-        "inner-highlight": "inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+        premium: "0 18px 48px rgba(13, 32, 71, 0.10), 0 2px 10px rgba(13, 32, 71, 0.06)",
+        card: "0 8px 24px rgba(13, 32, 71, 0.07)",
+        elevated: "0 24px 70px rgba(13, 32, 71, 0.18), 0 4px 16px rgba(13, 32, 71, 0.08)",
+        glow: "0 0 28px rgba(13, 59, 134, 0.16)",
+        "inner-highlight": "inset 0 1px 0 rgba(255, 255, 255, 0.88)",
       },
       fontSize: {
         "2xs": ["0.625rem", { lineHeight: "0.875rem" }],

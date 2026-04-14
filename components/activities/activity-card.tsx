@@ -70,7 +70,7 @@ export function ActivityCard({
       <div className="flex items-start gap-2">
         <button
           type="button"
-          className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-tertiary transition hover:bg-white/[0.05] hover:text-secondary"
+          className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-tertiary transition hover:bg-accent/[0.06] hover:text-secondary"
           aria-label="Arrastar atividade"
           {...(draggable ? attributes : {})}
           {...(draggable ? listeners : {})}
@@ -117,7 +117,7 @@ export function ActivityCard({
         <div className="mt-3 flex justify-end gap-1.5 border-t border-border/35 pt-3">
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-secondary transition hover:bg-white/[0.05] hover:text-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-secondary transition hover:bg-accent/[0.06] hover:text-foreground"
             onClick={() => onEdit?.(activity)}
             aria-label="Editar atividade"
           >

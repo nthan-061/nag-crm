@@ -124,7 +124,7 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
             </thead>
             <tbody className="divide-y divide-border/20">
               {leads.map((lead) => (
-                <tr key={lead.id} className="group transition-colors hover:bg-white/[0.025]">
+                <tr key={lead.id} className="group transition-colors hover:bg-accent/[0.035]">
                   <td className="px-6 py-3.5">
                     <span className="font-semibold text-foreground">{lead.nome}</span>
                   </td>

@@ -23,13 +23,13 @@ export function Sidebar() {
       {/* ── Brand header ──────────────────────────── */}
       <div className="px-5 pt-6 pb-5 border-b border-border/50">
         <div className="flex items-center gap-3.5">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-accent/25 bg-accent-muted/60">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-accent/15 bg-accent-muted/70 shadow-inner-highlight">
             <Image
-              src="/logo-white.png"
+              src="/logo-blue.png"
               alt="Nathan Alves Group"
               width={26}
               height={26}
-              className="opacity-85 object-contain"
+              className="opacity-90 object-contain"
             />
           </div>
           <div className="min-w-0">
@@ -58,8 +58,8 @@ export function Sidebar() {
               className={cn(
                 "relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-150",
                 isActive
-                  ? "bg-accent/12 text-foreground"
-                  : "text-secondary hover:bg-white/[0.04] hover:text-foreground/80"
+                  ? "bg-accent/10 text-foreground"
+                  : "text-secondary hover:bg-accent/[0.06] hover:text-foreground/80"
               )}
             >
               {/* Active indicator */}
