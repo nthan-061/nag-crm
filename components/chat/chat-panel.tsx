@@ -75,6 +75,20 @@ export function ChatPanel({
     return () => window.clearInterval(interval);
   }, [loadMessages, selectedCard?.lead_id]);
 
+  useEffect(() => {
+    if (!selectedCard?.lead_id) return;
+
+    function processPendingMedia() {
+      void fetch("/api/messages/media/process-pending?limit=2", { cache: "no-store" }).catch(() => {
+        // Background media hydration is best-effort; chat polling keeps the UI fresh.
+      });
+    }
+
+    processPendingMedia();
+    const interval = window.setInterval(processPendingMedia, 30000);
+    return () => window.clearInterval(interval);
+  }, [selectedCard?.lead_id]);
+
   if (!selectedCard) {
     return (
       <div className="glass-panel flex h-full flex-col items-center justify-center rounded-2xl border border-border/50 text-center p-8 shadow-card">
