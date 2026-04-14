@@ -7,7 +7,6 @@ import {
   fetchContactMessages,
   type EvolutionMessage,
 } from "@/lib/services/evolution-client";
-import { hydrateMessageMedia } from "@/lib/services/message-media-service";
 import {
   normalizeWhatsAppMessageContent,
   toMessageMediaInput
@@ -420,12 +419,6 @@ export async function importContact(
       });
       if (created) {
         messagesImported++;
-        await hydrateMessageMedia({
-          message: created,
-          leadId: lead.id,
-          rawEvolutionMessage: msg,
-          normalized
-        });
       }
     }
   } catch (err) {

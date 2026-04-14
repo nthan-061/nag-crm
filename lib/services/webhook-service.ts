@@ -3,7 +3,6 @@ import { createCard, getEntryColumnId, touchCard } from "@/lib/repositories/card
 import { createLead, findLeadByPhone } from "@/lib/repositories/leads-repository";
 import { createMessage } from "@/lib/repositories/messages-repository";
 import { ensureDefaultPipeline } from "@/lib/repositories/pipeline-repository";
-import { hydrateExistingMessageMedia, hydrateMessageMedia } from "@/lib/services/message-media-service";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { webhookMessageSchema, type WebhookMessage } from "@/lib/validations/webhook";
 import {
@@ -278,21 +277,8 @@ export async function processWhatsappWebhook(payload: unknown) {
           });
 
           if (!createdMessage) {
-            await hydrateExistingMessageMedia({
-              externalId,
-              leadId: lead.id,
-              rawEvolutionMessage: outboundMessage,
-              normalized
-            });
             return { ok: true, leadId: lead.id, duplicate: true };
           }
-
-          await hydrateMessageMedia({
-            message: createdMessage,
-            leadId: lead.id,
-            rawEvolutionMessage: outboundMessage,
-            normalized
-          });
 
           const supabase = createSupabaseAdminClient();
           const { data: card } = await supabase
@@ -392,21 +378,8 @@ export async function processWhatsappWebhook(payload: unknown) {
 
   if (!createdMessage) {
     console.log("[webhook] duplicate message, skipping:", externalId);
-    await hydrateExistingMessageMedia({
-      externalId,
-      leadId: lead.id,
-      rawEvolutionMessage: inboundMessage,
-      normalized
-    });
     return { ok: true, leadId: lead.id, duplicate: true };
   }
-
-  await hydrateMessageMedia({
-    message: createdMessage,
-    leadId: lead.id,
-    rawEvolutionMessage: inboundMessage,
-    normalized
-  });
 
   if (card?.id) {
     await touchCard(card.id, timestamp);

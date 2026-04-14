@@ -1,8 +1,33 @@
-import { findMessageByExternalId, updateMessageMedia } from "@/lib/repositories/messages-repository";
+import {
+  findMessageByExternalId,
+  listPendingMediaMessages,
+  updateMessageMedia
+} from "@/lib/repositories/messages-repository";
 import { getBase64FromMediaMessage, type EvolutionMessage } from "@/lib/services/evolution-client";
 import { uploadMessageMedia } from "@/lib/services/media-storage-service";
 import type { Message } from "@/lib/types/database";
 import type { NormalizedMessageContent } from "@/lib/services/whatsapp-message-normalizer";
+
+function getHydrationAttempts(message: Message) {
+  const attempts = message.media_metadata?.hydrationAttempts;
+  return typeof attempts === "number" && Number.isFinite(attempts) ? attempts : 0;
+}
+
+async function markMediaHydrationFailure(message: Message, error: string) {
+  await updateMessageMedia(message.id, {
+    media_metadata: {
+      ...(message.media_metadata ?? {}),
+      hydrationAttempts: getHydrationAttempts(message) + 1,
+      hydrationFailedAt: new Date().toISOString(),
+      hydrationError: error.slice(0, 240)
+    }
+  }).catch((updateError) => {
+    console.warn("[message-media] failed to record hydration failure", {
+      messageId: message.id,
+      error: updateError instanceof Error ? updateError.message : String(updateError)
+    });
+  });
+}
 
 export async function hydrateMessageMedia(input: {
   message: Message;
@@ -28,6 +53,7 @@ export async function hydrateMessageMedia(input: {
         externalId: input.message.external_id,
         mediaType: input.normalized.mediaType
       });
+      await markMediaHydrationFailure(input.message, "Evolution did not return media base64");
       return input.message;
     }
 
@@ -59,12 +85,14 @@ export async function hydrateMessageMedia(input: {
       }
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     console.warn("[message-media] failed to hydrate media", {
       messageId: input.message.id,
       externalId: input.message.external_id,
       mediaType: input.normalized.mediaType,
-      error: error instanceof Error ? error.message : String(error)
+      error: message
     });
+    await markMediaHydrationFailure(input.message, message);
     return input.message;
   }
 }
@@ -86,4 +114,81 @@ export async function hydrateExistingMessageMedia(input: {
     rawEvolutionMessage: input.rawEvolutionMessage,
     normalized: input.normalized
   });
+}
+
+function getRawEvolutionMessage(message: Message): Record<string, unknown> | null {
+  const raw = message.media_metadata?.raw;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return {
+      key: {
+        id: message.external_id ?? undefined,
+        fromMe: message.tipo === "saida"
+      },
+      message: {
+        [`${message.media_type}Message`]: raw
+      }
+    };
+  }
+
+  return null;
+}
+
+export async function processPendingMessageMedia(limit = 5) {
+  const pending = await listPendingMediaMessages(Math.max(limit * 5, limit));
+  let processed = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  for (const message of pending) {
+    if (processed + failed >= limit) break;
+
+    if (getHydrationAttempts(message) >= 3) {
+      skipped++;
+      continue;
+    }
+
+    const rawEvolutionMessage = getRawEvolutionMessage(message);
+    if (!rawEvolutionMessage) {
+      failed++;
+      console.warn("[message-media] pending media missing raw metadata", {
+        messageId: message.id,
+        externalId: message.external_id,
+        mediaType: message.media_type
+      });
+      continue;
+    }
+
+    const hydrated = await hydrateMessageMedia({
+      message,
+      leadId: message.lead_id,
+      rawEvolutionMessage,
+      normalized: {
+        content: message.conteudo,
+        mediaType: message.media_type,
+        media: {
+          mimetype: message.media_mime_type,
+          fileName: message.media_file_name,
+          fileLength: message.media_size,
+          seconds: message.media_duration_seconds,
+          caption: typeof message.media_metadata?.caption === "string" ? message.media_metadata.caption : null,
+          thumbnail: message.media_thumbnail,
+          raw: (message.media_metadata?.raw as Record<string, unknown> | undefined) ?? undefined
+        }
+      }
+    });
+
+    if (hydrated.media_storage_path) {
+      processed++;
+    } else {
+      failed++;
+    }
+  }
+
+  return {
+    ok: true,
+    checked: pending.length,
+    processed,
+    failed,
+    skipped
+  };
 }

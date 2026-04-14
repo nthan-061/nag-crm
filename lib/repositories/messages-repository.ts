@@ -95,6 +95,20 @@ export async function updateMessageMedia(messageId: string, mediaData: MessageMe
   return data;
 }
 
+export async function listPendingMediaMessages(limit = 5): Promise<Message[]> {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*")
+    .in("media_type", ["image", "audio", "video"])
+    .is("media_storage_path", null)
+    .order("timestamp", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function listNotesByLead(leadId: string): Promise<LeadNote[]> {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
