@@ -98,6 +98,43 @@ export interface Database {
         Update: { de_coluna?: string | null; para_coluna?: string; timestamp?: string };
         Relationships: [];
       };
+      activities: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          status: ActivityStatus;
+          priority: ActivityPriority;
+          due_date: string | null;
+          lead_id: string | null;
+          position: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          status?: ActivityStatus;
+          priority?: ActivityPriority;
+          due_date?: string | null;
+          lead_id?: string | null;
+          position?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          title?: string;
+          description?: string | null;
+          status?: ActivityStatus;
+          priority?: ActivityPriority;
+          due_date?: string | null;
+          lead_id?: string | null;
+          position?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       kanban_cards_view: {
@@ -137,6 +174,41 @@ export type Column = Database["public"]["Tables"]["columns"]["Row"];
 export type Lead = Database["public"]["Tables"]["leads"]["Row"];
 export type Message = Database["public"]["Tables"]["messages"]["Row"];
 export type KanbanCardRecord = Database["public"]["Views"]["kanban_cards_view"]["Row"];
+export type ActivityStatus = "todo" | "doing" | "done";
+export type ActivityPriority = "low" | "medium" | "high";
+export type Activity = Database["public"]["Tables"]["activities"]["Row"];
+export type ActivityCreatePayload = Database["public"]["Tables"]["activities"]["Insert"];
+export type ActivityUpdatePayload = Database["public"]["Tables"]["activities"]["Update"];
+export interface ActivityLead {
+  id: string;
+  nome: string;
+  telefone: string;
+  origem: string | null;
+}
+
+export interface ActivityWithLead extends Activity {
+  lead: ActivityLead | null;
+}
+
+export interface ActivityBoardColumn {
+  id: ActivityStatus;
+  title: string;
+  activities: ActivityWithLead[];
+}
+
+export interface ActivitiesBoardData {
+  columns: ActivityBoardColumn[];
+  leads: ActivityLead[];
+}
+
+export interface MoveActivityPayload {
+  activityId: string;
+  status: ActivityStatus;
+  position: number;
+  sourceStatus?: ActivityStatus | null;
+  sourceOrderedIds?: string[];
+  targetOrderedIds?: string[];
+}
 export interface LeadNote {
   id: string;
   lead_id: string;

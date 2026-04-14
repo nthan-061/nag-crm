@@ -53,11 +53,31 @@ create table if not exists public.movements (
   timestamp timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.activities (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  status text not null default 'todo',
+  priority text not null default 'medium',
+  due_date timestamptz,
+  lead_id uuid references public.leads(id) on delete set null,
+  position integer not null default 0,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+
+  constraint activities_status_check check (status in ('todo', 'doing', 'done')),
+  constraint activities_priority_check check (priority in ('low', 'medium', 'high')),
+  constraint activities_position_check check (position >= 0)
+);
+
 create index if not exists idx_leads_telefone on public.leads (telefone);
 create index if not exists idx_cards_coluna_id on public.cards (coluna_id);
 create index if not exists idx_messages_lead_id_timestamp on public.messages (lead_id, "timestamp" desc);
 create index if not exists idx_movements_card_id on public.movements (card_id, "timestamp" desc);
 create unique index if not exists idx_messages_external_id on public.messages (external_id) where external_id is not null;
+create index if not exists idx_activities_status_position on public.activities(status, position);
+create index if not exists idx_activities_lead_id on public.activities(lead_id);
+create index if not exists idx_activities_due_date on public.activities(due_date);
 
 create or replace view public.kanban_cards_view as
 select
@@ -100,12 +120,29 @@ begin
 end;
 $$;
 
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+drop trigger if exists set_activities_updated_at on public.activities;
+create trigger set_activities_updated_at
+before update on public.activities
+for each row
+execute function public.set_updated_at();
+
 alter table public.pipelines enable row level security;
 alter table public.columns enable row level security;
 alter table public.leads enable row level security;
 alter table public.cards enable row level security;
 alter table public.messages enable row level security;
 alter table public.movements enable row level security;
+alter table public.activities enable row level security;
 
 create policy "authenticated_read_pipelines" on public.pipelines for select to authenticated using (true);
 create policy "authenticated_read_columns" on public.columns for select to authenticated using (true);
@@ -113,12 +150,14 @@ create policy "authenticated_read_leads" on public.leads for select to authentic
 create policy "authenticated_read_cards" on public.cards for select to authenticated using (true);
 create policy "authenticated_read_messages" on public.messages for select to authenticated using (true);
 create policy "authenticated_read_movements" on public.movements for select to authenticated using (true);
+create policy "authenticated_read_activities" on public.activities for select to authenticated using (true);
 create policy "authenticated_write_leads" on public.leads for all to authenticated using (true) with check (true);
 create policy "authenticated_write_cards" on public.cards for all to authenticated using (true) with check (true);
 create policy "authenticated_write_messages" on public.messages for all to authenticated using (true) with check (true);
 create policy "authenticated_write_movements" on public.movements for all to authenticated using (true) with check (true);
 create policy "authenticated_write_columns" on public.columns for all to authenticated using (true) with check (true);
 create policy "authenticated_write_pipelines" on public.pipelines for all to authenticated using (true) with check (true);
+create policy "authenticated_write_activities" on public.activities for all to authenticated using (true) with check (true);
 
 insert into public.pipelines (nome)
 values ('Pipeline Comercial')
