@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,81 @@ export type MessageListHandle = {
   /** Force scroll to bottom and re-enable auto-follow (call after sending a message). */
   scrollToBottom: () => void;
 };
+
+function isPlaceholder(value: string) {
+  return ["[Imagem recebida]", "[Audio recebido]", "[Video recebido]", "[Documento recebido]"].includes(value);
+}
+
+function MediaUnavailable({ type }: { type: "image" | "audio" }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border/60 bg-muted/50 px-3 py-3 text-xs text-secondary">
+      {type === "image" ? "Imagem recebida, mas arquivo ainda indisponivel." : "Audio recebido, mas arquivo ainda indisponivel."}
+    </div>
+  );
+}
+
+function ImageMessage({ message }: { message: Message }) {
+  const [failed, setFailed] = useState(false);
+  if (!message.media_storage_path || failed) return <MediaUnavailable type="image" />;
+
+  return (
+    <a href={`/api/messages/media/${message.id}`} target="_blank" rel="noreferrer" className="block">
+      {/* Signed media is served by an API route, so a plain img keeps auth and refresh behavior predictable. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/api/messages/media/${message.id}`}
+        alt={message.conteudo && !isPlaceholder(message.conteudo) ? message.conteudo : "Imagem recebida"}
+        loading="lazy"
+        className="max-h-[360px] w-full max-w-[320px] rounded-xl border border-border/50 object-contain"
+        onError={() => setFailed(true)}
+      />
+    </a>
+  );
+}
+
+function AudioMessage({ message }: { message: Message }) {
+  if (!message.media_storage_path) return <MediaUnavailable type="audio" />;
+
+  return (
+    <div className="min-w-[240px]">
+      <audio
+        controls
+        preload="metadata"
+        src={`/api/messages/media/${message.id}`}
+        className="w-full"
+      />
+      {message.media_duration_seconds ? (
+        <p className="mt-1 text-[10px] text-secondary/70">{message.media_duration_seconds}s</p>
+      ) : null}
+    </div>
+  );
+}
+
+function MessageBody({ message }: { message: Message }) {
+  if (message.media_type === "image") {
+    return (
+      <div className="space-y-2">
+        <ImageMessage message={message} />
+        {message.conteudo && !isPlaceholder(message.conteudo) ? (
+          <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (message.media_type === "audio") {
+    return (
+      <div className="space-y-2">
+        <AudioMessage message={message} />
+        {message.conteudo && !isPlaceholder(message.conteudo) ? (
+          <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>;
+}
 
 export const MessageList = forwardRef<
   MessageListHandle,
@@ -115,7 +190,7 @@ export const MessageList = forwardRef<
                 : "rounded-bl-sm bg-surface border border-border/50 text-foreground"
             )}
           >
-            <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>
+            <MessageBody message={message} />
           </div>
           <p className={cn(
             "mt-1 px-1 text-[10px]",

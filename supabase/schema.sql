@@ -42,7 +42,17 @@ create table if not exists public.messages (
   conteudo text not null,
   tipo text not null check (tipo in ('entrada', 'saida')),
   timestamp timestamptz not null default timezone('utc', now()),
-  external_id text
+  external_id text,
+  media_type text not null default 'text',
+  media_mime_type text,
+  media_file_name text,
+  media_url text,
+  media_storage_path text,
+  media_size bigint,
+  media_duration_seconds integer,
+  media_thumbnail text,
+  media_metadata jsonb not null default '{}'::jsonb,
+  constraint messages_media_type_check check (media_type in ('text', 'image', 'audio', 'video', 'document', 'sticker', 'contact', 'location', 'unknown'))
 );
 
 create table if not exists public.movements (
@@ -75,6 +85,8 @@ create index if not exists idx_cards_coluna_id on public.cards (coluna_id);
 create index if not exists idx_messages_lead_id_timestamp on public.messages (lead_id, "timestamp" desc);
 create index if not exists idx_movements_card_id on public.movements (card_id, "timestamp" desc);
 create unique index if not exists idx_messages_external_id on public.messages (external_id) where external_id is not null;
+create index if not exists idx_messages_media_type on public.messages(media_type);
+create index if not exists idx_messages_media_storage_path on public.messages(media_storage_path) where media_storage_path is not null;
 create index if not exists idx_activities_status_position on public.activities(status, position);
 create index if not exists idx_activities_lead_id on public.activities(lead_id);
 create index if not exists idx_activities_due_date on public.activities(due_date);
@@ -158,6 +170,32 @@ create policy "authenticated_write_movements" on public.movements for all to aut
 create policy "authenticated_write_columns" on public.columns for all to authenticated using (true) with check (true);
 create policy "authenticated_write_pipelines" on public.pipelines for all to authenticated using (true) with check (true);
 create policy "authenticated_write_activities" on public.activities for all to authenticated using (true) with check (true);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'message-media',
+  'message-media',
+  false,
+  52428800,
+  array[
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'audio/ogg',
+    'audio/mpeg',
+    'audio/mp4',
+    'audio/aac',
+    'audio/webm',
+    'video/mp4',
+    'application/pdf',
+    'application/octet-stream'
+  ]
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 insert into public.pipelines (nome)
 values ('Pipeline Comercial')

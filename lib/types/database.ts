@@ -41,6 +41,15 @@ export interface Database {
           tipo: "entrada" | "saida";
           timestamp: string;
           external_id: string | null;
+          media_type: MessageMediaType;
+          media_mime_type: string | null;
+          media_file_name: string | null;
+          media_url: string | null;
+          media_storage_path: string | null;
+          media_size: number | null;
+          media_duration_seconds: number | null;
+          media_thumbnail: string | null;
+          media_metadata: Record<string, unknown>;
         };
         Insert: {
           id?: string;
@@ -49,8 +58,31 @@ export interface Database {
           tipo: "entrada" | "saida";
           timestamp?: string;
           external_id?: string | null;
+          media_type?: MessageMediaType;
+          media_mime_type?: string | null;
+          media_file_name?: string | null;
+          media_url?: string | null;
+          media_storage_path?: string | null;
+          media_size?: number | null;
+          media_duration_seconds?: number | null;
+          media_thumbnail?: string | null;
+          media_metadata?: Record<string, unknown>;
         };
-        Update: { conteudo?: string; tipo?: "entrada" | "saida"; timestamp?: string; external_id?: string | null };
+        Update: {
+          conteudo?: string;
+          tipo?: "entrada" | "saida";
+          timestamp?: string;
+          external_id?: string | null;
+          media_type?: MessageMediaType;
+          media_mime_type?: string | null;
+          media_file_name?: string | null;
+          media_url?: string | null;
+          media_storage_path?: string | null;
+          media_size?: number | null;
+          media_duration_seconds?: number | null;
+          media_thumbnail?: string | null;
+          media_metadata?: Record<string, unknown>;
+        };
         Relationships: [];
       };
       cards: {
@@ -172,6 +204,16 @@ export interface Database {
 export type Pipeline = Database["public"]["Tables"]["pipelines"]["Row"];
 export type Column = Database["public"]["Tables"]["columns"]["Row"];
 export type Lead = Database["public"]["Tables"]["leads"]["Row"];
+export type MessageMediaType =
+  | "text"
+  | "image"
+  | "audio"
+  | "video"
+  | "document"
+  | "sticker"
+  | "contact"
+  | "location"
+  | "unknown";
 export type Message = Database["public"]["Tables"]["messages"]["Row"];
 export type KanbanCardRecord = Database["public"]["Views"]["kanban_cards_view"]["Row"];
 export type ActivityStatus = "todo" | "doing" | "done";

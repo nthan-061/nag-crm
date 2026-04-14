@@ -7,6 +7,11 @@ import {
   fetchContactMessages,
   type EvolutionMessage,
 } from "@/lib/services/evolution-client";
+import { hydrateMessageMedia } from "@/lib/services/message-media-service";
+import {
+  normalizeWhatsAppMessageContent,
+  toMessageMediaInput
+} from "@/lib/services/whatsapp-message-normalizer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -141,22 +146,7 @@ function isPersonalJid(jid: string): boolean {
 }
 
 function extractTextFromMessage(msg: EvolutionMessage): string | null {
-  const m = msg.message;
-  if (!m) return null;
-
-  const conversation = m.conversation;
-  if (typeof conversation === "string" && conversation.trim()) return conversation.trim();
-
-  const extendedText = (m.extendedTextMessage as { text?: string } | undefined)?.text;
-  if (typeof extendedText === "string" && extendedText.trim()) return extendedText.trim();
-
-  if (m.imageMessage) return "[Imagem]";
-  if (m.videoMessage) return "[Video]";
-  if (m.audioMessage || m.pttMessage) return "[Audio]";
-  if (m.documentMessage) return "[Documento]";
-  if (m.stickerMessage) return "[Sticker]";
-
-  return null;
+  return normalizeWhatsAppMessageContent(msg.message)?.content ?? null;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -412,7 +402,8 @@ export async function importContact(
     for (const msg of evolutionMessages) {
       if (!msg.key?.id) continue;
       const content = extractTextFromMessage(msg);
-      if (!content) continue;
+      const normalized = normalizeWhatsAppMessageContent(msg.message);
+      if (!content || !normalized) continue;
 
       const rawTs = msg.messageTimestamp;
       const ts = rawTs
@@ -425,8 +416,17 @@ export async function importContact(
         tipo: msg.key.fromMe ? "saida" : "entrada",
         timestamp: ts,
         external_id: msg.key.id,
+        ...toMessageMediaInput(normalized),
       });
-      if (created) messagesImported++;
+      if (created) {
+        messagesImported++;
+        await hydrateMessageMedia({
+          message: created,
+          leadId: lead.id,
+          rawEvolutionMessage: msg,
+          normalized
+        });
+      }
     }
   } catch (err) {
     console.warn("[reconciliation] failed to import messages for", jid, err instanceof Error ? err.message : err);

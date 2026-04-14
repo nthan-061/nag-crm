@@ -3,8 +3,13 @@ import { createCard, getEntryColumnId, touchCard } from "@/lib/repositories/card
 import { createLead, findLeadByPhone } from "@/lib/repositories/leads-repository";
 import { createMessage } from "@/lib/repositories/messages-repository";
 import { ensureDefaultPipeline } from "@/lib/repositories/pipeline-repository";
+import { hydrateExistingMessageMedia, hydrateMessageMedia } from "@/lib/services/message-media-service";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { webhookMessageSchema, type WebhookMessage } from "@/lib/validations/webhook";
+import {
+  normalizeWhatsAppMessageContent,
+  toMessageMediaInput
+} from "@/lib/services/whatsapp-message-normalizer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -127,54 +132,7 @@ function unwrapMessage(
 function extractMessageContent(
   message: Record<string, unknown> | undefined
 ): string | null {
-  const payload = unwrapMessage(message);
-  if (!payload) return null;
-
-  // Text messages
-  const conversation = payload.conversation;
-  if (typeof conversation === "string" && conversation.trim()) {
-    return conversation.trim();
-  }
-
-  const extendedText = (payload.extendedTextMessage as { text?: string } | undefined)?.text;
-  if (typeof extendedText === "string" && extendedText.trim()) {
-    return extendedText.trim();
-  }
-
-  // Media messages — accepted with placeholder content
-  const imageCaption = (payload.imageMessage as { caption?: string } | undefined)?.caption;
-  if (typeof imageCaption === "string" && imageCaption.trim()) return imageCaption.trim();
-  if (payload.imageMessage) return "[Imagem recebida]";
-
-  if (payload.videoMessage) return "[Video recebido]";
-  if (payload.audioMessage || payload.pttMessage) return "[Audio recebido]";
-  if (payload.documentMessage) return "[Documento recebido]";
-  if (payload.stickerMessage) return "[Sticker recebido]";
-  if (payload.contactMessage) return "[Contato recebido]";
-  if (payload.locationMessage) return "[Localizacao recebida]";
-
-  // Interactive response messages — contacts who tap buttons/polls count as leads
-  const reaction = payload.reactionMessage as { text?: string } | undefined;
-  if (reaction?.text) return `[Reagiu: ${reaction.text}]`;
-  if (payload.reactionMessage) return "[Reacao recebida]";
-
-  const buttonResponse = payload.buttonsResponseMessage as { selectedDisplayText?: string } | undefined;
-  if (buttonResponse?.selectedDisplayText) return `[Respondeu: ${buttonResponse.selectedDisplayText}]`;
-
-  const listResponse = payload.listResponseMessage as { title?: string } | undefined;
-  if (listResponse?.title) return `[Selecionou: ${listResponse.title}]`;
-
-  const templateReply = payload.templateButtonReplyMessage as { selectedDisplayText?: string } | undefined;
-  if (templateReply?.selectedDisplayText) return `[Respondeu: ${templateReply.selectedDisplayText}]`;
-
-  const pollCreation = payload.pollCreationMessage as { name?: string } | undefined;
-  if (pollCreation?.name) return `[Enquete: ${pollCreation.name}]`;
-
-  if (payload.pollUpdateMessage) return "[Votou em enquete]";
-
-  // Anything else (protocol messages, status updates, etc.)
-  // — return null so the event is ignored without creating data
-  return null;
+  return normalizeWhatsAppMessageContent(message)?.content ?? null;
 }
 
 function extractMessageId(candidate: WebhookCandidate): string | undefined {
@@ -303,8 +261,8 @@ export async function processWhatsappWebhook(payload: unknown) {
         const lead = await findLeadByPhone(telefone);
         if (lead) {
           const timestamp = toISOTimestamp(outboundMessage.messageTimestamp ?? outboundMessage.timestamp);
-          const conteudo = extractMessageContent(outboundMessage.message);
-          if (!conteudo) {
+          const normalized = normalizeWhatsAppMessageContent(outboundMessage.message);
+          if (!normalized) {
             console.log("[webhook] outbound message has no content, skipping");
             return { ok: true, skipped: true, reason: "outbound_no_content" };
           }
@@ -312,15 +270,29 @@ export async function processWhatsappWebhook(payload: unknown) {
 
           const createdMessage = await createMessage({
             lead_id: lead.id,
-            conteudo,
+            conteudo: normalized.content,
             tipo: "saida",
             timestamp,
             external_id: externalId,
+            ...toMessageMediaInput(normalized),
           });
 
           if (!createdMessage) {
+            await hydrateExistingMessageMedia({
+              externalId,
+              leadId: lead.id,
+              rawEvolutionMessage: outboundMessage,
+              normalized
+            });
             return { ok: true, leadId: lead.id, duplicate: true };
           }
+
+          await hydrateMessageMedia({
+            message: createdMessage,
+            leadId: lead.id,
+            rawEvolutionMessage: outboundMessage,
+            normalized
+          });
 
           const supabase = createSupabaseAdminClient();
           const { data: card } = await supabase
@@ -350,8 +322,8 @@ export async function processWhatsappWebhook(payload: unknown) {
     return { ok: true, skipped: true, reason: "no_valid_phone" };
   }
 
-  const conteudo = extractMessageContent(inboundMessage.message);
-  if (!conteudo) {
+  const normalized = normalizeWhatsAppMessageContent(inboundMessage.message);
+  if (!normalized) {
     // This should not happen (normalizeWebhookMessage already checks content)
     // but guard anyway to never create a lead without real content.
     console.log("[webhook] inbound candidate has no content, skipping");
@@ -411,16 +383,30 @@ export async function processWhatsappWebhook(payload: unknown) {
 
   const createdMessage = await createMessage({
     lead_id: lead.id,
-    conteudo,
+    conteudo: normalized.content,
     tipo: "entrada",
     timestamp,
     external_id: externalId,
+    ...toMessageMediaInput(normalized),
   });
 
   if (!createdMessage) {
     console.log("[webhook] duplicate message, skipping:", externalId);
+    await hydrateExistingMessageMedia({
+      externalId,
+      leadId: lead.id,
+      rawEvolutionMessage: inboundMessage,
+      normalized
+    });
     return { ok: true, leadId: lead.id, duplicate: true };
   }
+
+  await hydrateMessageMedia({
+    message: createdMessage,
+    leadId: lead.id,
+    rawEvolutionMessage: inboundMessage,
+    normalized
+  });
 
   if (card?.id) {
     await touchCard(card.id, timestamp);

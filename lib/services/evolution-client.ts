@@ -28,6 +28,13 @@ export type EvolutionMessage = {
   pushName?: string;
 };
 
+export type EvolutionMediaBase64 = {
+  base64: string;
+  mimetype?: string | null;
+  fileName?: string | null;
+  size?: number | null;
+};
+
 // ─── Instance resolution ──────────────────────────────────────────────────────
 
 export async function resolveInstanceName(): Promise<string | null> {
@@ -138,4 +145,96 @@ export async function fetchContactMessages(jid: string, limit = 50): Promise<Evo
   }
 
   return [];
+}
+
+function pickString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function pickNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeBase64Response(data: unknown): EvolutionMediaBase64 | null {
+  const records = [
+    data,
+    (data as { data?: unknown } | null)?.data,
+    (data as { response?: unknown } | null)?.response,
+    (data as { media?: unknown } | null)?.media
+  ].filter(Boolean);
+
+  for (const record of records) {
+    if (!record || typeof record !== "object") continue;
+    const item = record as Record<string, unknown>;
+    const base64 =
+      pickString(item.base64) ??
+      pickString(item.base64Message) ??
+      pickString(item.file) ??
+      pickString(item.data);
+
+    if (!base64) continue;
+
+    return {
+      base64,
+      mimetype: pickString(item.mimetype) ?? pickString(item.mimeType) ?? pickString(item.mediaType),
+      fileName: pickString(item.fileName) ?? pickString(item.filename) ?? pickString(item.name),
+      size: pickNumber(item.size) ?? pickNumber(item.fileLength)
+    };
+  }
+
+  return null;
+}
+
+export async function getBase64FromMediaMessage(input: {
+  message: EvolutionMessage | Record<string, unknown>;
+  convertToMp4?: boolean;
+}): Promise<EvolutionMediaBase64 | null> {
+  const env = getEnv();
+  if (!env.evolutionApiUrl || !env.evolutionApiKey || !env.evolutionInstance) {
+    console.warn("[evolution-media] Evolution API nao configurada");
+    return null;
+  }
+
+  const instanceName = await resolveInstanceName();
+  if (!instanceName) {
+    console.warn("[evolution-media] instancia Evolution nao encontrada");
+    return null;
+  }
+
+  const response = await fetch(
+    `${env.evolutionApiUrl}/chat/getBase64FromMediaMessage/${encodeURIComponent(instanceName)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: env.evolutionApiKey
+      },
+      body: JSON.stringify({
+        message: input.message,
+        convertToMp4: input.convertToMp4 ?? false
+      }),
+      cache: "no-store"
+    }
+  );
+
+  if (!response.ok) {
+    console.warn("[evolution-media] failed to fetch base64", {
+      status: response.status,
+      statusText: response.statusText
+    });
+    return null;
+  }
+
+  const data = await response.json().catch(() => null);
+  const normalized = normalizeBase64Response(data);
+  if (!normalized) {
+    console.warn("[evolution-media] base64 response missing media payload");
+  }
+
+  return normalized;
 }
