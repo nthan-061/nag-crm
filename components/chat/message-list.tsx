@@ -19,10 +19,16 @@ function isPlaceholder(value: string) {
   return ["[Imagem recebida]", "[Audio recebido]", "[Video recebido]", "[Documento recebido]"].includes(value);
 }
 
-function MediaUnavailable({ type }: { type: "image" | "audio" }) {
+function MediaUnavailable({ type }: { type: "image" | "audio" | "video" }) {
+  const label = {
+    image: "Imagem recebida, mas arquivo ainda indisponivel.",
+    audio: "Audio recebido, mas arquivo ainda indisponivel.",
+    video: "Video recebido, mas arquivo ainda indisponivel."
+  }[type];
+
   return (
     <div className="rounded-xl border border-dashed border-border/60 bg-muted/50 px-3 py-3 text-xs text-secondary">
-      {type === "image" ? "Imagem recebida, mas arquivo ainda indisponivel." : "Audio recebido, mas arquivo ainda indisponivel."}
+      {label}
     </div>
   );
 }
@@ -64,6 +70,24 @@ function AudioMessage({ message }: { message: Message }) {
   );
 }
 
+function VideoMessage({ message }: { message: Message }) {
+  if (!message.media_storage_path) return <MediaUnavailable type="video" />;
+
+  return (
+    <div className="w-full max-w-[320px] overflow-hidden rounded-xl border border-border/50 bg-black/40">
+      <video
+        controls
+        preload="metadata"
+        src={`/api/messages/media/${message.id}`}
+        className="max-h-[360px] w-full object-contain"
+      />
+      {message.media_duration_seconds ? (
+        <p className="px-3 pb-2 text-[10px] text-secondary/70">{message.media_duration_seconds}s</p>
+      ) : null}
+    </div>
+  );
+}
+
 function MessageBody({ message }: { message: Message }) {
   if (message.media_type === "image") {
     return (
@@ -80,6 +104,17 @@ function MessageBody({ message }: { message: Message }) {
     return (
       <div className="space-y-2">
         <AudioMessage message={message} />
+        {message.conteudo && !isPlaceholder(message.conteudo) ? (
+          <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (message.media_type === "video") {
+    return (
+      <div className="space-y-2">
+        <VideoMessage message={message} />
         {message.conteudo && !isPlaceholder(message.conteudo) ? (
           <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>
         ) : null}

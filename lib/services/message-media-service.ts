@@ -10,7 +10,7 @@ export async function hydrateMessageMedia(input: {
   rawEvolutionMessage: EvolutionMessage | Record<string, unknown>;
   normalized: NormalizedMessageContent;
 }) {
-  if (!["image", "audio"].includes(input.normalized.mediaType)) return input.message;
+  if (!["image", "audio", "video"].includes(input.normalized.mediaType)) return input.message;
   if (input.message.media_storage_path) return input.message;
 
   console.log("[message-media] media detected", {
@@ -75,7 +75,7 @@ export async function hydrateExistingMessageMedia(input: {
   rawEvolutionMessage: EvolutionMessage | Record<string, unknown>;
   normalized: NormalizedMessageContent;
 }) {
-  if (!input.externalId || !["image", "audio"].includes(input.normalized.mediaType)) return null;
+  if (!input.externalId || !["image", "audio", "video"].includes(input.normalized.mediaType)) return null;
 
   const existing = await findMessageByExternalId(input.externalId);
   if (!existing || existing.media_storage_path) return existing;

@@ -188,6 +188,9 @@ values (
     'audio/aac',
     'audio/webm',
     'video/mp4',
+    'video/quicktime',
+    'video/3gpp',
+    'video/webm',
     'application/pdf',
     'application/octet-stream'
   ]

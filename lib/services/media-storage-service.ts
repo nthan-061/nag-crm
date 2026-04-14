@@ -15,6 +15,9 @@ const MIME_EXTENSION: Record<string, string> = {
   "audio/aac": "aac",
   "audio/webm": "webm",
   "video/mp4": "mp4",
+  "video/quicktime": "mov",
+  "video/3gpp": "3gp",
+  "video/webm": "webm",
   "application/pdf": "pdf",
   "application/octet-stream": "bin"
 };
@@ -24,7 +27,10 @@ function cleanMimeType(value: string | null | undefined) {
 }
 
 function extensionFromMimeType(mimeType: string) {
-  return MIME_EXTENSION[cleanMimeType(mimeType)] ?? "bin";
+  const clean = cleanMimeType(mimeType);
+  if (MIME_EXTENSION[clean]) return MIME_EXTENSION[clean];
+  if (clean.startsWith("video/")) return "mp4";
+  return "bin";
 }
 
 function stripBase64Prefix(value: string) {
