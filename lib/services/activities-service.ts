@@ -3,6 +3,7 @@ import {
   deleteActivity as deleteActivityRecord,
   getActivityById,
   getNextActivityPosition,
+  isActivitiesTableMissing,
   listActivities,
   listActivityLeads,
   moveActivity as moveActivityRecord,
@@ -34,8 +35,18 @@ function buildBoard(activities: ActivityWithLead[], leads: ActivitiesBoardData["
 }
 
 export async function getActivitiesBoard(): Promise<ActivitiesBoardData> {
-  const [activities, leads] = await Promise.all([listActivities(), listActivityLeads()]);
-  return buildBoard(activities, leads);
+  try {
+    const [activities, leads] = await Promise.all([listActivities(), listActivityLeads()]);
+    return buildBoard(activities, leads);
+  } catch (error) {
+    if (isActivitiesTableMissing(error)) {
+      console.error("Activities table is missing. Apply supabase/migrations/005_create_activities.sql.");
+      const leads = await listActivityLeads().catch(() => []);
+      return buildBoard([], leads);
+    }
+
+    throw error;
+  }
 }
 
 export async function createActivity(input: unknown) {

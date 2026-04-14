@@ -10,6 +10,12 @@ import type {
 
 type ActivityRow = Activity;
 
+function isMissingActivitiesTableError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const maybeError = error as { code?: string; message?: string };
+  return maybeError.code === "42P01" || maybeError.message?.includes("activities") === true;
+}
+
 function attachLeads(activities: ActivityRow[], leads: ActivityLead[]): ActivityWithLead[] {
   const leadById = new Map(leads.map((lead) => [lead.id, lead]));
 
@@ -45,6 +51,10 @@ export async function listActivities(): Promise<ActivityWithLead[]> {
 
   if (activitiesError) throw activitiesError;
   return attachLeads(activities ?? [], leads);
+}
+
+export function isActivitiesTableMissing(error: unknown) {
+  return isMissingActivitiesTableError(error);
 }
 
 export async function getActivityById(activityId: string): Promise<Activity | null> {
