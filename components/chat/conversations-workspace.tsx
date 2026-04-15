@@ -76,12 +76,12 @@ export function ConversationsWorkspace({
   const selectedCard = cards.find((card) => card.lead_id === selectedLeadId) ?? null;
 
   return (
-    <section className="grid h-[calc(100vh-5.25rem)] min-h-0 grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+    <section className="grid h-[calc(100vh-4.5rem)] min-h-0 grid-cols-1 gap-3 xl:grid-cols-[300px_minmax(0,1fr)]">
       <aside className="glass-panel flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/60 shadow-card">
-        <div className="border-b border-border/40 p-4">
+        <div className="border-b border-border/40 p-3.5">
           <p className="label-overline">Conversas</p>
-          <h1 className="mt-1 text-xl font-bold tracking-tight text-foreground">Inbox comercial</h1>
-          <div className="relative mt-4">
+          <h1 className="mt-1 text-lg font-bold tracking-tight text-foreground">Inbox comercial</h1>
+          <div className="relative mt-3">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-tertiary" />
             <Input
               value={search}
@@ -93,7 +93,7 @@ export function ConversationsWorkspace({
         </div>
 
         <ScrollArea className="min-h-0 flex-1">
-          <div className="space-y-2 p-3">
+          <div className="space-y-2 p-2.5">
             {filteredCards.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <MessageCircleMore className="h-8 w-8 text-tertiary" />
@@ -109,7 +109,7 @@ export function ConversationsWorkspace({
                   key={card.card_id}
                   type="button"
                   className={cn(
-                    "w-full rounded-2xl border p-3 text-left transition-all",
+                    "w-full rounded-xl border p-2.5 text-left transition-all",
                     isActive
                       ? "border-accent/35 bg-accent/[0.08] shadow-card"
                       : "border-border/35 bg-white/60 hover:border-border-strong hover:bg-card-hover"
@@ -118,12 +118,12 @@ export function ConversationsWorkspace({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-foreground">{card.lead_nome}</p>
+                      <p className="truncate text-[13px] font-bold text-foreground">{card.lead_nome}</p>
                       <p className="mt-0.5 font-mono text-[11px] text-secondary">{formatPhone(card.lead_telefone)}</p>
                     </div>
                     <span className="text-[10px] text-tertiary">{formatRelativeTime(card.ultima_interacao)}</span>
                   </div>
-                  <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-secondary">
+                  <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-secondary">
                     {card.ultima_mensagem ?? "Sem mensagens ainda"}
                   </p>
                 </button>
@@ -135,7 +135,7 @@ export function ConversationsWorkspace({
 
       <div
         className={cn(
-          "grid min-h-0 gap-4 transition-all duration-200",
+          "grid min-h-0 gap-3 transition-all duration-200",
           notesOpen ? "xl:grid-cols-[minmax(0,1fr)_300px]" : "xl:grid-cols-[minmax(0,1fr)]"
         )}
       >

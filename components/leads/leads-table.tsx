@@ -90,7 +90,7 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
     <div className="glass-panel rounded-2xl border border-border/50 shadow-card overflow-hidden">
 
       {/* ── Header ────────────────────────────── */}
-      <div className="flex items-center justify-between border-b border-border/50 px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
         <div>
           <p className="label-overline">Contatos</p>
           <h2 className="mt-1 text-lg font-bold tracking-tight text-foreground">
@@ -105,8 +105,8 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
 
       {/* ── Table ─────────────────────────────── */}
       {leads.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-surface/40">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/60 bg-surface/40">
             <Users className="h-5 w-5 text-secondary/40" />
           </div>
           <p className="mt-4 text-sm font-medium text-foreground/60">Nenhum lead ainda</p>
@@ -119,19 +119,19 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
           <table className="min-w-full divide-y divide-border/30 text-sm">
             <thead>
               <tr className="bg-surface/30">
-                <th className="px-6 py-3 text-left">
+                <th className="px-4 py-2.5 text-left">
                   <span className="label-overline">Nome</span>
                 </th>
-                <th className="px-6 py-3 text-left">
+                <th className="px-4 py-2.5 text-left">
                   <span className="label-overline">Telefone</span>
                 </th>
-                <th className="px-6 py-3 text-left">
+                <th className="px-4 py-2.5 text-left">
                   <span className="label-overline">Origem</span>
                 </th>
-                <th className="px-6 py-3 text-left">
+                <th className="px-4 py-2.5 text-left">
                   <span className="label-overline">Criado em</span>
                 </th>
-                <th className="px-6 py-3 text-right">
+                <th className="px-4 py-2.5 text-right">
                   <span className="label-overline">Acao</span>
                 </th>
               </tr>
@@ -141,23 +141,23 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
                 const isDeleting = deletingLeadIds.has(lead.id);
                 return (
                   <tr key={lead.id} className={`group transition-colors hover:bg-accent/[0.035] ${isDeleting ? "opacity-60" : ""}`}>
-                    <td className="px-6 py-3.5">
+                    <td className="px-4 py-3">
                       <span className="font-semibold text-foreground">{lead.nome}</span>
                     </td>
-                    <td className="px-6 py-3.5">
+                    <td className="px-4 py-3">
                       <span className="font-mono text-xs text-secondary">{formatPhone(lead.telefone)}</span>
                     </td>
-                    <td className="px-6 py-3.5">
+                    <td className="px-4 py-3">
                       <span className="rounded-md border border-border/50 bg-surface/60 px-2 py-0.5 text-xs text-secondary/80">
                         {ORIGIN_LABEL[lead.origem ?? "manual"] ?? (lead.origem ?? "manual")}
                       </span>
                     </td>
-                    <td className="px-6 py-3.5">
+                    <td className="px-4 py-3">
                       <span className="text-secondary/70 text-xs">
                         {new Date(lead.criado_em).toLocaleString("pt-BR")}
                       </span>
                     </td>
-                    <td className="px-6 py-3.5 text-right">
+                    <td className="px-4 py-3 text-right">
                       <button
                         type="button"
                         className="text-tertiary opacity-100 transition-all hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"

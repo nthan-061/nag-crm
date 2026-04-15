@@ -19,16 +19,16 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
 
   return (
     <AppFrame>
-      <div className="space-y-6">
+      <div className="space-y-4">
 
         {/* ── Page header ──────────────────────────────── */}
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex items-end justify-between gap-3">
           <div>
             <p className="label-overline">Dashboard</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+            <h2 className="mt-1.5 text-xl font-bold tracking-tight text-foreground md:text-2xl">
               Visão operacional
             </h2>
-            <p className="mt-1.5 text-sm text-secondary">
+            <p className="mt-1 text-[13px] text-secondary">
               Volume de leads, fila de entrada e atividade recente do CRM.
             </p>
           </div>
@@ -70,10 +70,10 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
         {/* ── Activity feed ────────────────────────────── */}
         <div className="glass-panel rounded-2xl border border-border/60 shadow-card overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border/50 px-6 py-4">
+          <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
             <div>
               <p className="label-overline">Atividade recente</p>
-              <p className="mt-1 text-sm font-medium text-foreground">
+              <p className="mt-1 text-[13px] font-medium text-foreground">
                 Últimas interações no pipeline
               </p>
             </div>
@@ -83,8 +83,8 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
           </div>
 
           {latestCards.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-surface/40">
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/60 bg-surface/40">
                 <BarChart3 className="h-5 w-5 text-secondary/50" />
               </div>
               <p className="mt-4 text-sm font-medium text-foreground/60">Sem atividade ainda</p>
@@ -97,16 +97,16 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
               <table className="min-w-full divide-y divide-border/40 text-sm">
                 <thead>
                   <tr className="bg-surface/30">
-                    <th className="px-6 py-3 text-left">
+                    <th className="px-4 py-2.5 text-left">
                       <span className="label-overline">Lead</span>
                     </th>
-                    <th className="px-6 py-3 text-left">
+                    <th className="px-4 py-2.5 text-left">
                       <span className="label-overline">Telefone</span>
                     </th>
-                    <th className="px-6 py-3 text-left">
+                    <th className="px-4 py-2.5 text-left">
                       <span className="label-overline">Última mensagem</span>
                     </th>
-                    <th className="px-6 py-3 text-left">
+                    <th className="px-4 py-2.5 text-left">
                       <span className="label-overline">Atualização</span>
                     </th>
                   </tr>
@@ -118,22 +118,22 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
                       className="group transition-colors hover:bg-accent/[0.035]"
                       style={{ animationDelay: `${i * 30}ms` }}
                     >
-                      <td className="px-6 py-3.5">
+                      <td className="px-4 py-3">
                         <span className="font-semibold text-foreground">{card.lead_nome}</span>
                       </td>
-                      <td className="px-6 py-3.5">
+                      <td className="px-4 py-3">
                         <span className="font-mono text-xs text-secondary">
                           {formatPhone(card.lead_telefone)}
                         </span>
                       </td>
-                      <td className="px-6 py-3.5 max-w-[280px]">
+                      <td className="max-w-[280px] px-4 py-3">
                         <span className="block truncate text-secondary">
                           {card.ultima_mensagem ?? (
                             <span className="text-tertiary italic">Sem mensagens</span>
                           )}
                         </span>
                       </td>
-                      <td className="px-6 py-3.5">
+                      <td className="px-4 py-3">
                         <span className="text-secondary/70">{formatRelativeTime(card.ultima_interacao)}</span>
                       </td>
                     </tr>

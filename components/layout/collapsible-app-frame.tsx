@@ -11,11 +11,11 @@ export function CollapsibleAppFrame({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <main className="min-h-screen p-4 md:p-5">
+    <main className="min-h-screen p-3 md:p-4">
       <div
         className={cn(
-          "grid min-h-[calc(100vh-2.5rem)] grid-cols-1 gap-4 transition-all duration-200 xl:grid-cols-[minmax(0,1fr)]",
-          sidebarOpen && "xl:grid-cols-[256px_minmax(0,1fr)]"
+          "grid min-h-[calc(100vh-2rem)] grid-cols-1 gap-3 transition-all duration-200 xl:grid-cols-[minmax(0,1fr)]",
+          sidebarOpen && "xl:grid-cols-[240px_minmax(0,1fr)]"
         )}
       >
         {sidebarOpen ? (
@@ -25,7 +25,7 @@ export function CollapsibleAppFrame({ children }: { children: ReactNode }) {
         ) : null}
 
         <div className="min-w-0">
-          <div className="mb-3 flex justify-start">
+          <div className="mb-2 flex justify-start">
             <Button
               type="button"
               variant="secondary"

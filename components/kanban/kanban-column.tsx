@@ -33,14 +33,14 @@ export function KanbanColumn({
       )}
     >
       {/* ── Column header ──────────────────────── */}
-      <header className="flex items-center justify-between px-4 py-3.5 border-b border-border/40">
-        <div className="flex items-center gap-2.5">
+      <header className="flex items-center justify-between border-b border-border/40 px-3.5 py-2.5">
+        <div className="flex items-center gap-2">
           {/* Color indicator */}
           <span
-            className="h-2.5 w-2.5 rounded-full flex-shrink-0 ring-1 ring-primary/15"
+            className="h-2 w-2 flex-shrink-0 rounded-full ring-1 ring-primary/15"
             style={{ backgroundColor: column.cor ?? "#2563EB" }}
           />
-          <h3 className="text-sm font-semibold text-foreground leading-none">
+          <h3 className="text-sm font-semibold leading-none text-foreground">
             {column.nome}
           </h3>
         </div>
@@ -51,10 +51,10 @@ export function KanbanColumn({
       </header>
 
       {/* ── Cards list ─────────────────────────── */}
-      <ScrollArea className="flex-1 h-[calc(100vh-200px)]">
-        <div className="space-y-2.5 p-3">
+      <ScrollArea className="h-[calc(100vh-170px)] flex-1">
+        <div className="space-y-2 p-2.5">
           {cards.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="flex flex-col items-center justify-center py-9 text-center">
               <div
                 className="h-8 w-8 rounded-full opacity-30"
                 style={{ backgroundColor: column.cor ?? "#2563EB", filter: "blur(8px)" }}

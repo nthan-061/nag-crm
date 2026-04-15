@@ -9,7 +9,7 @@ export default async function ActivitiesPage() {
 
   return (
     <AppFrame>
-      <div className="h-[calc(100vh-2rem)] md:h-[calc(100vh-2.5rem)]">
+      <div className="h-[calc(100vh-1.5rem)] md:h-[calc(100vh-2rem)]">
         <ActivitiesBoard initialBoard={board} />
       </div>
     </AppFrame>

@@ -120,12 +120,12 @@ export function ReconciliationPanel() {
     }) ?? [];
 
   return (
-    <Card className="p-6">
-      <div className="flex items-start justify-between gap-4">
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-accent">Reconciliacao</p>
-          <h2 className="mt-2 text-2xl font-semibold text-foreground">Contatos nao importados</h2>
-          <p className="mt-2 text-sm text-secondary leading-relaxed">
+          <h2 className="mt-1.5 text-xl font-semibold text-foreground">Contatos nao importados</h2>
+          <p className="mt-2 text-[13px] leading-relaxed text-secondary">
             Detecta contatos presentes na instancia WhatsApp mas ausentes do CRM e os importa com
             historico de mensagens.
           </p>
@@ -133,7 +133,7 @@ export function ReconciliationPanel() {
         <Users className="mt-1 h-6 w-6 flex-shrink-0 text-accent/60" />
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2.5">
+      <div className="mt-4 flex flex-wrap gap-2">
         <Button variant="secondary" onClick={checkMissing} disabled={loading || bulkImporting}>
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           {loading ? "Verificando..." : "Verificar contatos"}
@@ -149,13 +149,13 @@ export function ReconciliationPanel() {
         )}
       </div>
 
-      <div className="mt-5 rounded-2xl border border-border/40 bg-surface/25 p-4">
+      <div className="mt-4 rounded-2xl border border-border/40 bg-surface/25 p-3.5">
         <p className="text-xs uppercase tracking-[0.24em] text-accent/80">Busca manual</p>
-        <p className="mt-2 text-sm text-secondary">
+        <p className="mt-2 text-[13px] text-secondary">
           Consulte um numero especifico para descobrir se ele esta na instancia, no CRM, no pipeline
           ou se existe como lead sem card.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           <div className="min-w-[240px] flex-1">
             <Input
               placeholder="Ex.: 5511976896161"
@@ -170,7 +170,7 @@ export function ReconciliationPanel() {
         </div>
 
         {lookupResult && (
-          <div className="mt-4 rounded-xl border border-border/40 bg-background/30 px-4 py-4 text-sm">
+          <div className="mt-3 rounded-xl border border-border/40 bg-background/30 px-3 py-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium text-foreground">{lookupResult.normalizedPhone}</span>
               <span className="rounded-md border border-border/50 px-2 py-0.5 text-xs text-secondary">
@@ -183,7 +183,7 @@ export function ReconciliationPanel() {
               </span>
             </div>
 
-            <div className="mt-3 grid gap-2 text-secondary sm:grid-cols-2">
+            <div className="mt-3 grid gap-1.5 text-secondary sm:grid-cols-2">
               <p>Instancia: {lookupResult.foundInInstance ? "sim" : "nao"}</p>
               <p>CRM: {lookupResult.foundInCrm ? "sim" : "nao"}</p>
               <p>Pipeline/card: {lookupResult.hasCard ? "sim" : "nao"}</p>
@@ -203,7 +203,7 @@ export function ReconciliationPanel() {
             )}
 
             {lookupResult.status === "instance_only" && lookupResult.jid && (
-              <div className="mt-4">
+              <div className="mt-3">
                 <Button
                   size="sm"
                   onClick={() =>
@@ -221,7 +221,7 @@ export function ReconciliationPanel() {
             )}
 
             {lookupResult.possibleMatches.length > 0 && (
-              <div className="mt-4 rounded-xl border border-border/30 bg-surface/20 p-3">
+              <div className="mt-3 rounded-xl border border-border/30 bg-surface/20 p-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-accent/80">
                   Possiveis correspondencias
                 </p>
@@ -267,20 +267,20 @@ export function ReconciliationPanel() {
       </div>
 
       {error && (
-        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-danger/30 bg-danger/10 p-3.5 text-sm text-danger">
+        <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
           {error}
         </div>
       )}
 
       {contacts !== null && contacts.length === 0 && (
-        <div className="mt-4 rounded-xl border border-border/40 bg-surface/50 px-4 py-5 text-center text-sm text-secondary">
+        <div className="mt-3 rounded-xl border border-border/40 bg-surface/50 px-4 py-4 text-center text-sm text-secondary">
           Todos os contatos da instancia ja estao no CRM.
         </div>
       )}
 
       {contacts !== null && contacts.length > 0 && (
-        <div className="mt-4 space-y-2">
+        <div className="mt-3 space-y-2">
           {contacts.map((contact) => {
             const state = importStates[contact.jid];
             const isDone = state?.state === "done";
@@ -290,7 +290,7 @@ export function ReconciliationPanel() {
             return (
               <div
                 key={contact.jid}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-surface/40 px-4 py-3"
+                className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-surface/40 px-3 py-2.5"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{contact.name}</p>

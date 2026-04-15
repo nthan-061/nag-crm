@@ -206,14 +206,14 @@ export function CrmBoard({
 
   return (
     <div className="h-full min-w-0">
-      <div className="mb-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="mb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="label-overline">Pipeline em tempo real</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+            <h2 className="mt-1.5 text-xl font-bold tracking-tight text-foreground md:text-2xl">
               Kanban comercial
             </h2>
-            <p className="mt-1.5 text-sm text-secondary">
+            <p className="mt-1 text-[13px] text-secondary">
               Arraste cards entre etapas. Use o botao de conversa em cada lead para abrir o chat em tela dedicada.
             </p>
           </div>
@@ -260,7 +260,7 @@ export function CrmBoard({
         onDragCancel={() => setActiveCardId(null)}
       >
         <ScrollArea className="w-full">
-          <div className="flex min-h-[calc(100vh-150px)] gap-4 pb-6">
+          <div className="flex min-h-[calc(100vh-130px)] gap-3 pb-4">
             {columns.map((column) => (
               <KanbanColumn
                 key={column.id}
@@ -277,7 +277,7 @@ export function CrmBoard({
 
         <DragOverlay>
           {activeCard ? (
-            <div className="w-[320px]">
+            <div className="w-[300px]">
               <KanbanCard
                 card={activeCard}
                 isSelected={selectedLeadId === activeCard.lead_id}

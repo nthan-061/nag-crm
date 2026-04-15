@@ -43,7 +43,7 @@ export function LeadChatScreen({
 
   return (
     <section className="flex h-full min-h-0 flex-col">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <p className="label-overline">Conversa do pipeline</p>
         <Button
           type="button"
@@ -59,7 +59,7 @@ export function LeadChatScreen({
 
       <div
         className={cn(
-          "grid min-h-0 flex-1 gap-4 transition-all duration-200",
+          "grid min-h-0 flex-1 gap-3 transition-all duration-200",
           notesOpen ? "xl:grid-cols-[minmax(0,1fr)_300px]" : "xl:grid-cols-[minmax(0,1fr)]"
         )}
       >

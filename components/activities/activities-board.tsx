@@ -255,11 +255,11 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
 
   return (
     <div className="flex h-full min-w-0 flex-col">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="label-overline">Atividades</p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">Atividades</h1>
-          <p className="mt-1.5 text-sm text-secondary">
+          <h1 className="mt-1.5 text-xl font-bold tracking-tight text-foreground md:text-2xl">Atividades</h1>
+          <p className="mt-1 text-[13px] text-secondary">
             Organize tarefas comerciais, cotacoes e acompanhamentos do time.
           </p>
         </div>
@@ -282,7 +282,7 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
               {boardNotice}
             </div>
           ) : null}
-          <div className="flex h-[calc(100vh-145px)] gap-4 pb-6">
+          <div className="flex h-[calc(100vh-130px)] gap-3 pb-4">
             {columns.map((column) => (
               <ActivityColumn
                 key={column.id}
@@ -298,7 +298,7 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
 
         <DragOverlay>
           {activeActivity ? (
-            <div className="w-[310px]">
+            <div className="w-[300px]">
               <ActivityCard activity={activeActivity} draggable={false} isOverlay />
             </div>
           ) : null}

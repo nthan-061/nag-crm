@@ -100,8 +100,8 @@ export function ChatPanel({
 
   if (!selectedCard) {
     return (
-      <div className={cn("glass-panel flex h-full flex-col items-center justify-center rounded-2xl border border-border/50 text-center p-8 shadow-card", className)}>
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/20 bg-accent-muted/40">
+      <div className={cn("glass-panel flex h-full flex-col items-center justify-center rounded-2xl border border-border/50 p-6 text-center shadow-card", className)}>
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/20 bg-accent-muted/40">
           <MessageCircleMore className="h-7 w-7 text-accent/70" />
         </div>
         <h2 className="mt-5 text-base font-semibold text-foreground">Selecione um lead</h2>
@@ -116,11 +116,11 @@ export function ChatPanel({
     <div className={cn("glass-panel flex h-full flex-col rounded-2xl border border-border/50 shadow-card overflow-hidden", className)}>
 
       {/* ── Lead header ──────────────────────────── */}
-      <div className="border-b border-border/40 px-5 py-4">
+      <div className="border-b border-border/40 px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="label-overline">Conversa ativa</p>
-            <h2 className="mt-1.5 text-base font-bold tracking-tight text-foreground leading-tight truncate">
+            <h2 className="mt-1 text-base font-bold leading-tight tracking-tight text-foreground truncate">
               {selectedCard.lead_nome}
             </h2>
           </div>
@@ -135,7 +135,7 @@ export function ChatPanel({
         </div>
 
         {/* Contact row */}
-        <div className="mt-2.5 flex items-center justify-between gap-3">
+        <div className="mt-2 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs text-secondary/80">
             <Phone className="h-3.5 w-3.5 flex-shrink-0" />
             <span className="font-mono">{formatPhone(selectedCard.lead_telefone)}</span>
@@ -180,7 +180,7 @@ export function ChatPanel({
         ) : activeTab === "chat" || !showTabs ? (
           <>
             <MessageList ref={messageListRef} messages={messages} leadId={selectedCard.lead_id} />
-            <div className="flex-shrink-0 border-t border-border/40 p-4">
+            <div className="flex-shrink-0 border-t border-border/40 p-3">
               <MessageInput
                 leadId={selectedCard.lead_id}
                 onSent={async () => {

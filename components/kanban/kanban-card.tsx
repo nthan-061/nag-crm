@@ -55,7 +55,7 @@ export function KanbanCard({
       style={dragStyle}
       className={cn(
         // Base
-        "glass-panel relative rounded-xl border border-l-[3px] border-border/50 p-4 transition-all duration-150",
+        "glass-panel relative rounded-xl border border-l-[3px] border-border/50 p-3 transition-all duration-150",
         // Priority left border
         PRIORITY_BORDER[card.prioridade] ?? "border-l-border",
         // Interactive states
@@ -76,15 +76,15 @@ export function KanbanCard({
       {/* ── Header: name + priority ────────────── */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold leading-snug text-foreground">
+          <p className="truncate text-[13px] font-semibold leading-snug text-foreground">
             {card.lead_nome}
           </p>
-          <p className="mt-0.5 font-mono text-[11px] text-secondary/70">
+          <p className="mt-0.5 font-mono text-[10px] text-secondary/70">
             {formatPhone(card.lead_telefone)}
           </p>
         </div>
 
-        <div className="flex flex-shrink-0 items-center gap-1.5 rounded-md border border-border/50 bg-surface/60 px-2 py-1">
+        <div className="flex flex-shrink-0 items-center gap-1.5 rounded-md border border-border/50 bg-surface/60 px-1.5 py-0.5">
           <span className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", PRIORITY_DOT[card.prioridade])} />
           <span className="text-[10px] font-semibold uppercase tracking-wide text-secondary/80">
             {PRIORITY_LABEL[card.prioridade]}
@@ -94,17 +94,17 @@ export function KanbanCard({
 
       {/* ── Message preview ────────────────────── */}
       {card.ultima_mensagem ? (
-        <p className="mt-3 line-clamp-2 rounded-lg bg-muted/60 px-3 py-2 text-[12px] leading-relaxed text-secondary/80">
+        <p className="mt-2 line-clamp-1 rounded-lg bg-muted/60 px-2.5 py-1.5 text-[11px] leading-relaxed text-secondary/80">
           {card.ultima_mensagem}
         </p>
       ) : (
-        <p className="mt-3 rounded-lg border border-dashed border-border/40 px-3 py-2 text-[12px] italic text-tertiary">
+        <p className="mt-2 rounded-lg border border-dashed border-border/40 px-2.5 py-1.5 text-[11px] italic text-tertiary">
           Sem mensagens ainda
         </p>
       )}
 
       {/* ── Footer: time + origin ──────────────── */}
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-2.5 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-[11px] text-tertiary">
           <Clock className="h-3 w-3" />
           <span>{formatRelativeTime(card.ultima_interacao)}</span>
@@ -118,7 +118,7 @@ export function KanbanCard({
       {onOpenChat && !isOverlay ? (
         <button
           type="button"
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-accent/20 bg-accent/[0.07] px-3 py-2 text-xs font-semibold text-accent transition hover:border-accent/35 hover:bg-accent/[0.12]"
+          className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-accent/20 bg-accent/[0.07] px-3 py-1.5 text-[11px] font-semibold text-accent transition hover:border-accent/35 hover:bg-accent/[0.12]"
           onClick={(event) => {
             event.stopPropagation();
             onOpenChat(card.lead_id);

@@ -14,7 +14,7 @@ export default async function PipelineChatPage({
 
   return (
     <AppFrame>
-      <div className="h-[calc(100vh-2rem)] md:h-[calc(100vh-2.5rem)]">
+      <div className="h-[calc(100vh-1.5rem)] md:h-[calc(100vh-2rem)]">
         <LeadChatScreen selectedCard={selectedCard} />
       </div>
     </AppFrame>
