@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Download, ExternalLink, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types/database";
 
@@ -16,14 +17,37 @@ export type MessageListHandle = {
 };
 
 function isPlaceholder(value: string) {
-  return ["[Imagem recebida]", "[Audio recebido]", "[Video recebido]", "[Documento recebido]"].includes(value);
+  return [
+    "[Imagem recebida]",
+    "[Audio recebido]",
+    "[Video recebido]",
+    "[Documento recebido]",
+    "[Imagem enviada]",
+    "[Audio enviado]",
+    "[Video enviado]",
+    "[Documento enviado]"
+  ].includes(value);
 }
 
-function MediaUnavailable({ type }: { type: "image" | "audio" | "video" }) {
+function formatFileSize(size: number | null) {
+  if (!size || size <= 0) return null;
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function shouldShowCaption(message: Message) {
+  if (!message.conteudo || isPlaceholder(message.conteudo)) return false;
+  if (message.media_file_name && message.conteudo === message.media_file_name) return false;
+  return true;
+}
+
+function MediaUnavailable({ type }: { type: "image" | "audio" | "video" | "document" }) {
   const label = {
-    image: "Imagem recebida, mas arquivo ainda indisponivel.",
-    audio: "Audio recebido, mas arquivo ainda indisponivel.",
-    video: "Video recebido, mas arquivo ainda indisponivel."
+    image: "Imagem indisponivel no momento.",
+    audio: "Audio indisponivel no momento.",
+    video: "Video indisponivel no momento.",
+    document: "Documento indisponivel no momento."
   }[type];
 
   return (
@@ -88,12 +112,55 @@ function VideoMessage({ message }: { message: Message }) {
   );
 }
 
+function DocumentMessage({ message }: { message: Message }) {
+  if (!message.media_storage_path) return <MediaUnavailable type="document" />;
+
+  const fileName = message.media_file_name ?? (isPlaceholder(message.conteudo) ? "Documento recebido" : message.conteudo);
+  const fileSize = formatFileSize(message.media_size);
+  const mediaUrl = `/api/messages/media/${message.id}`;
+
+  return (
+    <div className="w-full min-w-[240px] max-w-[340px] rounded-xl border border-border/50 bg-background/70 p-3 text-foreground shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+          <FileText className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{fileName}</p>
+          <p className="mt-0.5 text-[11px] text-secondary">
+            {[message.media_mime_type, fileSize].filter(Boolean).join(" | ") || "Arquivo"}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <a
+          href={mediaUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Abrir
+        </a>
+        <a
+          href={`${mediaUrl}?download=1`}
+          download={fileName}
+          className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Baixar
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function MessageBody({ message }: { message: Message }) {
   if (message.media_type === "image") {
     return (
       <div className="space-y-2">
         <ImageMessage message={message} />
-        {message.conteudo && !isPlaceholder(message.conteudo) ? (
+        {shouldShowCaption(message) ? (
           <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>
         ) : null}
       </div>
@@ -104,7 +171,7 @@ function MessageBody({ message }: { message: Message }) {
     return (
       <div className="space-y-2">
         <AudioMessage message={message} />
-        {message.conteudo && !isPlaceholder(message.conteudo) ? (
+        {shouldShowCaption(message) ? (
           <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>
         ) : null}
       </div>
@@ -115,7 +182,18 @@ function MessageBody({ message }: { message: Message }) {
     return (
       <div className="space-y-2">
         <VideoMessage message={message} />
-        {message.conteudo && !isPlaceholder(message.conteudo) ? (
+        {shouldShowCaption(message) ? (
+          <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (message.media_type === "document") {
+    return (
+      <div className="space-y-2">
+        <DocumentMessage message={message} />
+        {shouldShowCaption(message) ? (
           <p className="whitespace-pre-wrap break-words">{message.conteudo}</p>
         ) : null}
       </div>

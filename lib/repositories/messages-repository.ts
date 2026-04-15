@@ -100,7 +100,7 @@ export async function listPendingMediaMessages(limit = 5): Promise<Message[]> {
   const { data, error } = await supabase
     .from("messages")
     .select("*")
-    .in("media_type", ["image", "audio", "video"])
+    .in("media_type", ["image", "audio", "video", "document"])
     .is("media_storage_path", null)
     .order("timestamp", { ascending: false })
     .limit(limit);

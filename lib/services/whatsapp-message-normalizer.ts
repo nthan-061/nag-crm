@@ -38,6 +38,24 @@ function pickNumber(value: unknown): number | null {
   return null;
 }
 
+function sanitizeRawMedia(raw: Record<string, unknown>): Record<string, unknown> {
+  const blockedKeys = new Set([
+    "base64",
+    "base64Message",
+    "jpegThumbnail",
+    "thumbnail",
+    "thumbnailDirectPath"
+  ]);
+
+  return Object.fromEntries(
+    Object.entries(raw).filter(([key, value]) => {
+      if (blockedKeys.has(key)) return false;
+      if (typeof value === "string" && value.length > 2000) return false;
+      return true;
+    })
+  );
+}
+
 function normalizeMediaMessage(input: {
   raw: Record<string, unknown>;
   mediaType: MessageMediaType;
@@ -47,13 +65,18 @@ function normalizeMediaMessage(input: {
   const caption = input.caption?.trim() || null;
   const seconds = pickNumber(input.raw.seconds) ?? pickNumber(input.raw.duration);
   const fileLength = pickNumber(input.raw.fileLength) ?? pickNumber(input.raw.fileSize);
+  const fileName =
+    pickString(input.raw.fileName) ??
+    pickString(input.raw.filename) ??
+    pickString(input.raw.title) ??
+    null;
 
   return {
-    content: caption ?? input.placeholder,
+    content: caption ?? (input.mediaType === "document" ? fileName : null) ?? input.placeholder,
     mediaType: input.mediaType,
     media: {
       mimetype: pickString(input.raw.mimetype) ?? pickString(input.raw.mimeType),
-      fileName: pickString(input.raw.fileName) ?? pickString(input.raw.fileName),
+      fileName,
       fileLength,
       seconds,
       caption,
@@ -61,7 +84,7 @@ function normalizeMediaMessage(input: {
         pickString(input.raw.jpegThumbnail) ??
         pickString(input.raw.thumbnail) ??
         pickString(input.raw.thumbnailDirectPath),
-      raw: input.raw
+      raw: sanitizeRawMedia(input.raw)
     }
   };
 }
@@ -118,6 +141,19 @@ export function normalizeWhatsAppMessageContent(
       mediaType: "document",
       placeholder: "[Documento recebido]",
       caption: pickString(documentMessage.caption)
+    });
+  }
+
+  const documentWithCaption = payload.documentWithCaptionMessage as
+    | { message?: { documentMessage?: Record<string, unknown> } }
+    | undefined;
+  const documentWithCaptionMessage = documentWithCaption?.message?.documentMessage;
+  if (documentWithCaptionMessage) {
+    return normalizeMediaMessage({
+      raw: documentWithCaptionMessage,
+      mediaType: "document",
+      placeholder: "[Documento recebido]",
+      caption: pickString(documentWithCaptionMessage.caption)
     });
   }
 

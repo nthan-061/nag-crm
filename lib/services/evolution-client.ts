@@ -35,6 +35,13 @@ export type EvolutionMediaBase64 = {
   size?: number | null;
 };
 
+export type EvolutionSendResponse = {
+  key?: { id?: string };
+  id?: string;
+  messageId?: string;
+  [key: string]: unknown;
+};
+
 // ─── Instance resolution ──────────────────────────────────────────────────────
 
 export async function resolveInstanceName(): Promise<string | null> {
@@ -237,4 +244,82 @@ export async function getBase64FromMediaMessage(input: {
   }
 
   return normalized;
+}
+
+function resolveEvolutionMessageId(response: EvolutionSendResponse | null): string | undefined {
+  if (!response) return undefined;
+  const nestedData = response.data as EvolutionSendResponse | undefined;
+  return response.key?.id ?? response.id ?? response.messageId ?? nestedData?.key?.id ?? nestedData?.id ?? nestedData?.messageId;
+}
+
+async function postEvolutionMessage(path: string, body: Record<string, unknown>) {
+  const env = getEnv();
+  if (!env.evolutionApiUrl || !env.evolutionApiKey || !env.evolutionInstance) {
+    throw new Error("Evolution API nao configurada");
+  }
+
+  const instanceName = await resolveInstanceName();
+  if (!instanceName) throw new Error("Instancia Evolution nao encontrada");
+
+  const response = await fetch(
+    `${env.evolutionApiUrl}${path}/${encodeURIComponent(instanceName)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: env.evolutionApiKey
+      },
+      body: JSON.stringify(body),
+      cache: "no-store"
+    }
+  );
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Evolution API retornou ${response.status} ao enviar midia${detail ? `: ${detail.slice(0, 160)}` : ""}`);
+  }
+
+  return (await response.json().catch(() => null)) as EvolutionSendResponse | null;
+}
+
+export async function sendEvolutionMediaMessage(input: {
+  number: string;
+  mediaType: "image" | "audio" | "video" | "document";
+  base64: string;
+  mimeType: string;
+  fileName?: string | null;
+  caption?: string | null;
+}) {
+  const caption = input.caption?.trim() || undefined;
+
+  if (input.mediaType === "audio") {
+    try {
+      const audioResponse = await postEvolutionMessage("/message/sendWhatsAppAudio", {
+        number: input.number,
+        audio: input.base64
+      });
+      return {
+        response: audioResponse,
+        externalId: resolveEvolutionMessageId(audioResponse)
+      };
+    } catch (error) {
+      console.warn("[evolution-media-send] audio endpoint failed, falling back to sendMedia", {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  const response = await postEvolutionMessage("/message/sendMedia", {
+    number: input.number,
+    mediatype: input.mediaType,
+    mimetype: input.mimeType,
+    caption,
+    media: input.base64,
+    fileName: input.fileName ?? undefined
+  });
+
+  return {
+    response,
+    externalId: resolveEvolutionMessageId(response)
+  };
 }

@@ -5,7 +5,7 @@ import { createMessageMediaSignedUrl } from "@/lib/services/media-storage-servic
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { messageId: string } }
 ) {
   try {
@@ -14,7 +14,11 @@ export async function GET(
       return NextResponse.json({ error: "Midia indisponivel" }, { status: 404 });
     }
 
-    const signedUrl = await createMessageMediaSignedUrl(message.media_storage_path, 60);
+    const url = new URL(request.url);
+    const downloadFileName = url.searchParams.get("download")
+      ? message.media_file_name ?? `mensagem-${message.id}`
+      : null;
+    const signedUrl = await createMessageMediaSignedUrl(message.media_storage_path, 60, downloadFileName);
     return NextResponse.redirect(signedUrl, {
       headers: {
         "Cache-Control": "no-store, max-age=0"
