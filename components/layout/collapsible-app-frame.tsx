@@ -25,7 +25,7 @@ export function CollapsibleAppFrame({ children }: { children: ReactNode }) {
         ) : null}
 
         <div className="min-w-0">
-          <div className="mb-2 flex justify-start">
+          <div className="mb-1.5 flex justify-start">
             <Button
               type="button"
               variant="secondary"

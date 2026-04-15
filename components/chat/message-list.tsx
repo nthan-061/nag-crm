@@ -286,18 +286,18 @@ export const MessageList = forwardRef<
   }
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2 min-h-0">
+    <div ref={containerRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3.5 py-3">
       {messages.map((message) => (
         <div
           key={message.id}
           className={cn(
-            "flex flex-col max-w-[82%]",
+            "flex max-w-[78%] flex-col transition-transform duration-150",
             message.tipo === "saida" ? "ml-auto items-end" : "items-start"
           )}
         >
           <div
             className={cn(
-              "rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
+              "rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm",
               message.tipo === "saida"
                 ? "rounded-br-sm bg-accent text-white"
                 : "rounded-bl-sm bg-surface border border-border/50 text-foreground"

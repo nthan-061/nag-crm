@@ -70,14 +70,14 @@ export function NotesPanel({ leadId }: { leadId: string }) {
 
       {/* ── Notes list ─────────────────────────── */}
       <ScrollArea className="flex-1 min-h-0">
-        <div className="space-y-2.5 px-4 py-4">
+        <div className="space-y-2 px-3 py-3">
           {error && (
             <p className="rounded-xl border border-danger/20 bg-danger/10 px-4 py-2 text-xs text-danger">{error}</p>
           )}
 
           {notes.length === 0 && !error && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/50 bg-surface/40">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/50 bg-surface/40">
                 <StickyNote className="h-4 w-4 text-secondary/40" />
               </div>
               <p className="mt-3 text-xs text-secondary/50">Nenhuma anotacao ainda.</p>
@@ -85,9 +85,9 @@ export function NotesPanel({ leadId }: { leadId: string }) {
           )}
 
           {notes.map((note) => (
-            <div key={note.id} className="group rounded-xl border border-border/40 bg-surface/40 p-3.5">
-              <div className="flex items-start justify-between gap-3">
-                <p className="whitespace-pre-wrap text-sm text-foreground leading-relaxed flex-1">{note.conteudo}</p>
+            <div key={note.id} className="group rounded-xl border border-border/40 bg-surface/40 p-3 transition-all duration-150 hover:-translate-y-0.5 hover:border-border/70">
+              <div className="flex items-start justify-between gap-2">
+                <p className="flex-1 whitespace-pre-wrap text-[13px] leading-relaxed text-foreground">{note.conteudo}</p>
                 <button
                   type="button"
                   onClick={() => handleDelete(note.id)}
@@ -97,7 +97,7 @@ export function NotesPanel({ leadId }: { leadId: string }) {
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <p className="mt-2.5 text-[10px] text-tertiary">
+              <p className="mt-2 text-[10px] text-tertiary">
                 {new Date(note.timestamp).toLocaleString("pt-BR")}
               </p>
             </div>
@@ -106,7 +106,7 @@ export function NotesPanel({ leadId }: { leadId: string }) {
       </ScrollArea>
 
       {/* ── Editor ─────────────────────────────── */}
-      <div className="border-t border-border/40 px-4 py-3 space-y-2.5">
+      <div className="space-y-2 border-t border-border/40 px-3 py-2.5">
         <Textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -118,7 +118,7 @@ export function NotesPanel({ leadId }: { leadId: string }) {
           }}
           placeholder="Escreva uma anotacao... (Ctrl+Enter para salvar)"
           disabled={isPending}
-          className="min-h-[80px] resize-none text-xs"
+          className="min-h-[68px] resize-none text-xs"
         />
         <Button
           onClick={handleSave}

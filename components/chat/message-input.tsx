@@ -346,7 +346,7 @@ export function MessageInput({
   const canSend = Boolean(leadId) && recordingState === "idle" && (value.trim().length > 0 || attachments.length > 0) && !isSending;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <input
         ref={fileInputRef}
         type="file"
@@ -358,16 +358,16 @@ export function MessageInput({
       />
 
       {attachments.length > 0 ? (
-        <div className="grid gap-2 rounded-xl border border-border bg-surface p-2">
+        <div className="grid gap-1.5 rounded-xl border border-border bg-surface p-2">
           {attachments.map((attachment) => {
             const Icon = getAttachmentIcon(attachment.file);
             return (
-              <div key={attachment.id} className="flex items-center gap-3 rounded-lg border border-border/70 bg-background/70 p-2 text-xs">
+              <div key={attachment.id} className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-background/70 p-2 text-xs">
                 {attachment.previewUrl && attachment.file.type.startsWith("image/") ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={attachment.previewUrl} alt="" className="h-12 w-12 rounded-lg border border-border object-cover" />
+                  <img src={attachment.previewUrl} alt="" className="h-10 w-10 rounded-lg border border-border object-cover" />
                 ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-secondary">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-secondary">
                     <Icon className="h-5 w-5" />
                   </div>
                 )}
@@ -451,7 +451,7 @@ export function MessageInput({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={!leadId || isSending || recordingState !== "idle" || attachments.length >= MAX_FILES}
-          className="absolute bottom-3 left-3 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-secondary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
+          className="absolute bottom-2.5 left-3 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-secondary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Anexar arquivos"
         >
           <Paperclip className="h-4 w-4" />
@@ -468,13 +468,13 @@ export function MessageInput({
           }}
           placeholder={leadId ? "Mensagem... (Enter para enviar)" : "Selecione um lead"}
           disabled={!leadId || isSending || recordingState !== "idle"}
-          className="min-h-[80px] resize-none pl-12 pr-24"
+          className="min-h-[64px] resize-none pl-12 pr-24"
         />
         <button
           type="button"
           onClick={() => void startRecording()}
           disabled={!leadId || isSending || recordingState !== "idle" || attachments.length >= MAX_FILES}
-          className="absolute bottom-3 right-14 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-secondary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
+          className="absolute bottom-2.5 right-14 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-secondary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Gravar audio"
         >
           <Mic className="h-4 w-4" />
@@ -483,7 +483,7 @@ export function MessageInput({
           type="button"
           onClick={() => void handleSubmit()}
           disabled={!canSend}
-          className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white transition-all hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-30"
+          className="absolute bottom-2.5 right-3 flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white transition-all hover:-translate-y-0.5 hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Enviar mensagem"
         >
           <SendHorizontal className="h-4 w-4" />

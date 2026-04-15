@@ -43,7 +43,7 @@ export function LeadChatScreen({
 
   return (
     <section className="flex h-full min-h-0 flex-col">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-3">
         <p className="label-overline">Conversa do pipeline</p>
         <Button
           type="button"
@@ -59,8 +59,8 @@ export function LeadChatScreen({
 
       <div
         className={cn(
-          "grid min-h-0 flex-1 gap-3 transition-all duration-200",
-          notesOpen ? "xl:grid-cols-[minmax(0,1fr)_300px]" : "xl:grid-cols-[minmax(0,1fr)]"
+          "grid min-h-0 flex-1 gap-2.5 transition-all duration-200",
+          notesOpen ? "xl:grid-cols-[minmax(0,1fr)_260px]" : "xl:grid-cols-[minmax(0,1fr)]"
         )}
       >
         <ChatPanel
@@ -85,8 +85,8 @@ export function LeadChatScreen({
         />
 
         {notesOpen && selectedCard ? (
-          <aside className="glass-panel hidden min-h-0 overflow-hidden rounded-2xl border border-border/60 shadow-card xl:flex xl:flex-col">
-            <div className="flex items-center justify-between border-b border-border/40 px-4 py-4">
+          <aside className="glass-panel hidden min-h-0 overflow-hidden rounded-2xl border border-border/60 shadow-card transition-all duration-200 xl:flex xl:flex-col">
+            <div className="flex items-center justify-between border-b border-border/40 px-3 py-3">
               <div>
                 <p className="label-overline">Anotacoes</p>
                 <h2 className="mt-1 text-sm font-bold text-foreground">{selectedCard.lead_nome}</h2>
