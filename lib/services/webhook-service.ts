@@ -1,5 +1,6 @@
 import { DEFAULT_ENTRY_COLUMN } from "@/lib/constants";
 import { createCard, getEntryColumnId, touchCard } from "@/lib/repositories/cards-repository";
+import { recordCrmEvent } from "@/lib/repositories/events-repository";
 import { createLead, findLeadByPhone } from "@/lib/repositories/leads-repository";
 import { createMessage } from "@/lib/repositories/messages-repository";
 import { ensureDefaultPipeline } from "@/lib/repositories/pipeline-repository";
@@ -279,6 +280,16 @@ export async function processWhatsappWebhook(payload: unknown) {
           if (!createdMessage) {
             return { ok: true, leadId: lead.id, duplicate: true };
           }
+          await recordCrmEvent({
+            leadId: lead.id,
+            eventType: "message.outbound_synced",
+            source: "webhook",
+            payload: {
+              messageId: createdMessage.id,
+              externalId,
+              mediaType: createdMessage.media_type
+            }
+          });
 
           const supabase = createSupabaseAdminClient();
           const { data: card } = await supabase
@@ -332,6 +343,12 @@ export async function processWhatsappWebhook(payload: unknown) {
         prioridade: "media",
         ultima_interacao: timestamp,
       });
+      await recordCrmEvent({
+        leadId: lead.id,
+        eventType: "lead.created",
+        source: "webhook",
+        payload: { phone: telefone }
+      });
       console.log("[webhook] new lead created:", lead.id, telefone);
     } catch (err) {
       // Race condition: another request already created the lead concurrently.
@@ -384,6 +401,16 @@ export async function processWhatsappWebhook(payload: unknown) {
   if (card?.id) {
     await touchCard(card.id, timestamp);
   }
+  await recordCrmEvent({
+    leadId: lead.id,
+    eventType: "message.inbound_created",
+    source: "webhook",
+    payload: {
+      messageId: createdMessage.id,
+      externalId,
+      mediaType: createdMessage.media_type
+    }
+  });
 
   let cardColumn = DEFAULT_ENTRY_COLUMN;
   if (card?.coluna_id) {

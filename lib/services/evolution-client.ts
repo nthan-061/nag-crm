@@ -323,3 +323,18 @@ export async function sendEvolutionMediaMessage(input: {
     externalId: resolveEvolutionMessageId(response)
   };
 }
+
+export async function sendEvolutionTextMessage(input: {
+  number: string;
+  text: string;
+}) {
+  const response = await postEvolutionMessage("/message/sendText", {
+    number: input.number,
+    text: input.text
+  });
+
+  return {
+    response,
+    externalId: resolveEvolutionMessageId(response)
+  };
+}

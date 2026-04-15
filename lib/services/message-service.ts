@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getEnv } from "@/lib/env";
 import { touchCard } from "@/lib/repositories/cards-repository";
+import { recordCrmEvent } from "@/lib/repositories/events-repository";
 import { createMessage, listMessagesByLead, updateMessageMedia } from "@/lib/repositories/messages-repository";
 import { resolveInstanceName, sendEvolutionMediaMessage } from "@/lib/services/evolution-client";
 import {
@@ -120,6 +121,17 @@ async function sendSingleMediaFile(input: {
     fileName,
     caption: input.caption
   });
+  await recordCrmEvent({
+    leadId: input.leadId,
+    eventType: "message.media_sent",
+    source: "chat",
+    payload: {
+      mediaType,
+      fileName,
+      size: buffer.byteLength,
+      externalId: sent.externalId ?? null
+    }
+  });
 
   const createdMessage = await createMessage({
     lead_id: input.leadId,
@@ -200,6 +212,12 @@ export async function sendMessage(payload: unknown) {
     );
 
     if (!response.ok) {
+      await recordCrmEvent({
+        leadId: parsed.leadId,
+        eventType: "message.send_failed",
+        source: "chat",
+        payload: { status: response.status }
+      });
       throw new Error("Falha ao enviar mensagem pela Evolution");
     }
 
@@ -219,6 +237,12 @@ export async function sendMessage(payload: unknown) {
     if (card?.id) {
       await touchCard(card.id, timestamp);
     }
+    await recordCrmEvent({
+      leadId: parsed.leadId,
+      eventType: "message.sent",
+      source: "chat",
+      payload: { messageId: message?.id ?? null, externalId: externalId ?? null }
+    });
 
     return message;
   }
@@ -233,6 +257,12 @@ export async function sendMessage(payload: unknown) {
   if (card?.id) {
     await touchCard(card.id, timestamp);
   }
+  await recordCrmEvent({
+    leadId: parsed.leadId,
+    eventType: "message.sent_local",
+    source: "chat",
+    payload: { messageId: message?.id ?? null }
+  });
 
   return message;
 }

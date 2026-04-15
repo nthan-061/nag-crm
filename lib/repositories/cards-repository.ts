@@ -1,7 +1,8 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isLeadNote } from "@/lib/notes";
 import { ensureDefaultPipeline } from "@/lib/repositories/pipeline-repository";
-import type { KanbanCardRecord } from "@/lib/types/database";
+import { getConversationStatesByLeadIds } from "@/lib/services/response-status";
+import type { KanbanCardRecord, Message } from "@/lib/types/database";
 
 export async function listCards(): Promise<KanbanCardRecord[]> {
   const supabase = createSupabaseAdminClient();
@@ -18,6 +19,7 @@ export async function listCards(): Promise<KanbanCardRecord[]> {
 
   const leadById = new Map((leads ?? []).map((lead) => [lead.id, lead]));
   const latestMessageByLeadId = new Map<string, string | null>();
+  const responseStatusByLeadId = getConversationStatesByLeadIds((messages ?? []) as Message[]);
 
   for (const message of messages ?? []) {
     if (isLeadNote(message.conteudo)) continue;
@@ -31,7 +33,7 @@ export async function listCards(): Promise<KanbanCardRecord[]> {
       const lead = leadById.get(card.lead_id);
       if (!lead) return null;
 
-      return {
+      const record: KanbanCardRecord = {
         card_id: card.id,
         coluna_id: card.coluna_id,
         prioridade: card.prioridade,
@@ -42,10 +44,17 @@ export async function listCards(): Promise<KanbanCardRecord[]> {
         lead_nome: lead.nome,
         lead_telefone: lead.telefone,
         lead_origem: lead.origem,
-        ultima_mensagem: latestMessageByLeadId.get(lead.id) ?? null
-      } satisfies KanbanCardRecord;
+        ultima_mensagem: latestMessageByLeadId.get(lead.id) ?? null,
+        needs_response: responseStatusByLeadId.get(lead.id)?.needsResponse ?? false,
+        last_message_type: responseStatusByLeadId.get(lead.id)?.lastMessageType ?? null,
+        last_message_at: responseStatusByLeadId.get(lead.id)?.lastMessageAt ?? null,
+        response_wait_hours: responseStatusByLeadId.get(lead.id)?.waitHours ?? null,
+        sla_bucket: responseStatusByLeadId.get(lead.id)?.slaBucket ?? "none"
+      };
+
+      return record;
     })
-    .filter((card): card is KanbanCardRecord => card !== null);
+    .filter((card): card is NonNullable<typeof card> => card !== null);
 }
 
 export async function listConversations(): Promise<KanbanCardRecord[]> {
@@ -63,6 +72,7 @@ export async function listConversations(): Promise<KanbanCardRecord[]> {
 
   const cardByLeadId = new Map((cards ?? []).map((card) => [card.lead_id, card]));
   const latestMessageByLeadId = new Map<string, { conteudo: string; timestamp: string }>();
+  const responseStatusByLeadId = getConversationStatesByLeadIds((messages ?? []) as Message[]);
 
   for (const message of messages ?? []) {
     if (isLeadNote(message.conteudo)) continue;
@@ -90,7 +100,12 @@ export async function listConversations(): Promise<KanbanCardRecord[]> {
         lead_nome: lead.nome,
         lead_telefone: lead.telefone,
         lead_origem: lead.origem,
-        ultima_mensagem: latestMessage?.conteudo ?? null
+        ultima_mensagem: latestMessage?.conteudo ?? null,
+        needs_response: responseStatusByLeadId.get(lead.id)?.needsResponse ?? false,
+        last_message_type: responseStatusByLeadId.get(lead.id)?.lastMessageType ?? null,
+        last_message_at: responseStatusByLeadId.get(lead.id)?.lastMessageAt ?? null,
+        response_wait_hours: responseStatusByLeadId.get(lead.id)?.waitHours ?? null,
+        sla_bucket: responseStatusByLeadId.get(lead.id)?.slaBucket ?? "none"
       } satisfies KanbanCardRecord;
     })
     .sort((a, b) => {

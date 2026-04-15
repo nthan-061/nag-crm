@@ -36,6 +36,8 @@ export function CrmBoard({
   const [showColumnManager, setShowColumnManager] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [responseFilter, setResponseFilter] = useState<"all" | "needs_response" | "stale_24h">("all");
+  const [priorityFilter, setPriorityFilter] = useState<"all" | "alta" | "media" | "baixa">("all");
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [movingCardId, setMovingCardId] = useState<string | null>(null);
   const [boardNotice, setBoardNotice] = useState<string | null>(null);
@@ -191,6 +193,9 @@ export function CrmBoard({
         const normalizedSearch = debouncedSearch.trim().toLowerCase();
         acc[column.id] = cards.filter((card) => {
           if (card.coluna_id !== column.id) return false;
+          if (responseFilter === "needs_response" && !card.needs_response) return false;
+          if (responseFilter === "stale_24h" && card.sla_bucket === "none") return false;
+          if (priorityFilter !== "all" && card.prioridade !== priorityFilter) return false;
           if (!normalizedSearch) return true;
 
           return (
@@ -201,7 +206,7 @@ export function CrmBoard({
         });
         return acc;
       }, {}),
-    [cards, columns, debouncedSearch]
+    [cards, columns, debouncedSearch, priorityFilter, responseFilter]
   );
 
   return (
@@ -245,6 +250,46 @@ export function CrmBoard({
           }}
         />
       )}
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-secondary">Filtro:</span>
+        {[
+          { id: "all", label: "Todos" },
+          { id: "needs_response", label: "Preciso responder" },
+          { id: "stale_24h", label: "Sem resposta 24h+" }
+        ].map((filter) => (
+          <button
+            key={filter.id}
+            type="button"
+            onClick={() => setResponseFilter(filter.id as typeof responseFilter)}
+            className={responseFilter === filter.id
+              ? "rounded-lg border border-accent/30 bg-accent/[0.08] px-3 py-1.5 text-xs font-semibold text-accent transition-colors"
+              : "rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-semibold text-secondary transition-colors hover:border-accent/25 hover:text-accent"
+            }
+          >
+            {filter.label}
+          </button>
+        ))}
+        <span className="ml-1 text-xs text-tertiary">Prioridade</span>
+        {[
+          { id: "all", label: "Todas" },
+          { id: "alta", label: "Alta" },
+          { id: "media", label: "Media" },
+          { id: "baixa", label: "Baixa" }
+        ].map((filter) => (
+          <button
+            key={filter.id}
+            type="button"
+            onClick={() => setPriorityFilter(filter.id as typeof priorityFilter)}
+            className={priorityFilter === filter.id
+              ? "rounded-lg border border-accent/30 bg-accent/[0.08] px-3 py-1.5 text-xs font-semibold text-accent transition-colors"
+              : "rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-semibold text-secondary transition-colors hover:border-accent/25 hover:text-accent"
+            }
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
 
       {boardNotice && (
         <div className="mb-3 rounded-xl border border-accent/20 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-secondary">

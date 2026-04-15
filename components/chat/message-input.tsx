@@ -1,9 +1,10 @@
 "use client";
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
-import { FileText, ImageIcon, Mic, Music, Paperclip, Pause, Play, SendHorizontal, Square, Trash2, Video, X } from "lucide-react";
+import { CalendarClock, FileText, ImageIcon, Mic, Music, Paperclip, Pause, Play, SendHorizontal, Square, Trash2, Video, X, Zap } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import type { MessageTemplate } from "@/lib/types/database";
 
 const ACCEPTED_MEDIA_TYPES = [
   "image/*",
@@ -76,10 +77,12 @@ function getAudioExtension(mimeType: string) {
 
 export function MessageInput({
   leadId,
-  onSent
+  onSent,
+  onScheduled
 }: {
   leadId: string | null;
   onSent: () => Promise<void>;
+  onScheduled?: () => Promise<void>;
 }) {
   const [value, setValue] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -89,6 +92,13 @@ export function MessageInput({
   const [isSending, setIsSending] = useState(false);
   const [sendStatus, setSendStatus] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleContent, setScheduleContent] = useState("");
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [isScheduling, setIsScheduling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -108,6 +118,15 @@ export function MessageInput({
       stopRecordingTimer();
       stopMicrophoneTracks();
     };
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      const response = await fetch("/api/message-templates", { cache: "no-store" }).catch(() => null);
+      if (!response?.ok) return;
+      const payload = (await response.json()) as { data?: MessageTemplate[] };
+      if (Array.isArray(payload.data)) setTemplates(payload.data);
+    })();
   }, []);
 
   function stopRecordingTimer() {
@@ -343,6 +362,43 @@ export function MessageInput({
     }
   }
 
+  function openScheduleDialog() {
+    const now = new Date(Date.now() + 10 * 60 * 1000);
+    setScheduleContent(value.trim());
+    setScheduleDate(now.toISOString().slice(0, 10));
+    setScheduleTime(now.toTimeString().slice(0, 5));
+    setScheduleOpen(true);
+    setSendError(null);
+  }
+
+  async function handleSchedule() {
+    if (!leadId || !scheduleContent.trim() || !scheduleDate || !scheduleTime) return;
+    setIsScheduling(true);
+    setSendError(null);
+    try {
+      const scheduledFor = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
+      const response = await fetch("/api/scheduled-messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId, content: scheduleContent, scheduledFor })
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({ error: "Falha ao programar mensagem" }))) as { error?: string };
+        throw new Error(payload.error ?? "Falha ao programar mensagem");
+      }
+
+      setScheduleOpen(false);
+      setValue("");
+      await onScheduled?.();
+      textareaRef.current?.focus();
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : "Falha ao programar mensagem");
+    } finally {
+      setIsScheduling(false);
+    }
+  }
+
   const canSend = Boolean(leadId) && recordingState === "idle" && (value.trim().length > 0 || attachments.length > 0) && !isSending;
 
   return (
@@ -446,12 +502,88 @@ export function MessageInput({
         </div>
       ) : null}
 
+      {showTemplates && templates.length > 0 ? (
+        <div className="rounded-xl border border-border bg-white p-2 shadow-premium">
+          <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+            Respostas rapidas
+          </div>
+          <div className="max-h-44 space-y-1 overflow-y-auto">
+            {templates.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                className="w-full rounded-lg px-2 py-2 text-left text-xs transition-colors hover:bg-accent/[0.06]"
+                onClick={() => {
+                  setValue(template.content);
+                  setShowTemplates(false);
+                  textareaRef.current?.focus();
+                }}
+              >
+                <span className="block font-semibold text-foreground">{template.title}</span>
+                <span className="mt-0.5 line-clamp-2 block text-secondary">{template.content}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {scheduleOpen ? (
+        <div className="rounded-xl border border-border bg-white p-3 shadow-premium">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Programar mensagem</p>
+            <button type="button" onClick={() => setScheduleOpen(false)} className="rounded-lg p-1 text-secondary hover:bg-muted" aria-label="Fechar programacao">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <Textarea
+            value={scheduleContent}
+            onChange={(event) => setScheduleContent(event.target.value)}
+            className="min-h-[76px] resize-none"
+            placeholder="Mensagem que sera enviada no futuro"
+            disabled={isScheduling}
+          />
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <input
+              type="date"
+              value={scheduleDate}
+              onChange={(event) => setScheduleDate(event.target.value)}
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+              disabled={isScheduling}
+            />
+            <input
+              type="time"
+              value={scheduleTime}
+              onChange={(event) => setScheduleTime(event.target.value)}
+              className="h-10 rounded-xl border border-border bg-white px-3 text-sm"
+              disabled={isScheduling}
+            />
+          </div>
+          <div className="mt-3 flex justify-end gap-2">
+            <button type="button" onClick={() => setScheduleOpen(false)} className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-secondary hover:bg-muted" disabled={isScheduling}>
+              Cancelar
+            </button>
+            <button type="button" onClick={() => void handleSchedule()} className="rounded-xl bg-accent px-3 py-2 text-xs font-semibold text-white hover:bg-accent/90 disabled:opacity-50" disabled={isScheduling || !scheduleContent.trim()}>
+              {isScheduling ? "Programando..." : "Confirmar"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="relative">
+        <button
+          type="button"
+          onClick={() => setShowTemplates((current) => !current)}
+          disabled={!leadId || isSending || recordingState !== "idle"}
+          className="absolute bottom-2.5 left-3 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-secondary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
+          aria-label="Respostas rapidas"
+        >
+          <Zap className="h-4 w-4" />
+        </button>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={!leadId || isSending || recordingState !== "idle" || attachments.length >= MAX_FILES}
-          className="absolute bottom-2.5 left-3 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-secondary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
+          className="absolute bottom-2.5 left-14 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-secondary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Anexar arquivos"
         >
           <Paperclip className="h-4 w-4" />
@@ -468,8 +600,17 @@ export function MessageInput({
           }}
           placeholder={leadId ? "Mensagem... (Enter para enviar)" : "Selecione um lead"}
           disabled={!leadId || isSending || recordingState !== "idle"}
-          className="min-h-[64px] resize-none pl-12 pr-24"
+          className="min-h-[64px] resize-none pl-24 pr-32"
         />
+        <button
+          type="button"
+          onClick={openScheduleDialog}
+          disabled={!leadId || isSending || recordingState !== "idle" || attachments.length > 0}
+          className="absolute bottom-2.5 right-[5.75rem] flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-secondary transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
+          aria-label="Programar mensagem"
+        >
+          <CalendarClock className="h-4 w-4" />
+        </button>
         <button
           type="button"
           onClick={() => void startRecording()}

@@ -1,7 +1,7 @@
 import { AppFrame } from "@/components/layout/app-frame";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { formatPhone, formatRelativeTime } from "@/lib/utils";
-import { BarChart3, TrendingUp, Zap, MessageSquare } from "lucide-react";
+import { BarChart3, CalendarClock, MessageSquare, Reply, Timer, TrendingUp, Zap } from "lucide-react";
 import type { DashboardData } from "@/lib/types/database";
 
 export function DashboardOverview({ data }: { data: DashboardData }) {
@@ -9,6 +9,10 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
   const newLeads = data.cards.filter((card) => card.coluna_id === data.columns[0]?.id).length;
   const highPriority = data.cards.filter((card) => card.prioridade === "alta").length;
   const withoutMessage = data.cards.filter((card) => !card.ultima_mensagem).length;
+  const needsResponse = data.metrics?.needsResponse ?? data.cards.filter((card) => card.needs_response).length;
+  const stale24h = data.metrics?.stale24h ?? data.cards.filter((card) => card.needs_response && card.sla_bucket !== "none").length;
+  const responseQueue = data.cards.filter((card) => card.needs_response).slice(0, 6);
+  const scheduledToday = data.scheduledToday ?? [];
   const latestCards = [...data.cards]
     .sort((a, b) => {
       if (!a.ultima_interacao) return 1;
@@ -65,6 +69,96 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
             helper="Leads que ainda não receberam nenhuma mensagem."
             icon={<MessageSquare className="h-4 w-4" />}
           />
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-3">
+          <SummaryCard
+            label="Preciso responder"
+            value={String(needsResponse)}
+            helper="Leads cuja ultima mensagem veio do cliente."
+            icon={<Reply className="h-4 w-4" />}
+            accent={needsResponse > 0}
+          />
+          <SummaryCard
+            label="Sem resposta 24h+"
+            value={String(stale24h)}
+            helper="Conversas acima do primeiro limite operacional."
+            icon={<Timer className="h-4 w-4" />}
+          />
+          <SummaryCard
+            label="Programadas hoje"
+            value={String(scheduledToday.length)}
+            helper="Mensagens pendentes ou em processamento para hoje."
+            icon={<CalendarClock className="h-4 w-4" />}
+          />
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="glass-panel rounded-2xl border border-border/60 p-4 shadow-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="label-overline">Fila de resposta</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">Leads que precisam de retorno</p>
+              </div>
+              <span className="rounded-lg border border-border/60 bg-surface/60 px-2.5 py-1 text-xs text-secondary">
+                {responseQueue.length}
+              </span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {responseQueue.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border/60 px-3 py-5 text-center text-sm text-secondary">
+                  Nenhum lead aguardando resposta agora.
+                </p>
+              ) : (
+                responseQueue.map((card) => (
+                  <div key={card.card_id} className="rounded-xl border border-border/60 bg-card px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">{card.lead_nome}</p>
+                        <p className="truncate text-xs text-secondary">{card.ultima_mensagem}</p>
+                      </div>
+                      <span className="shrink-0 rounded-md border border-danger/20 bg-danger/[0.08] px-2 py-1 text-[10px] font-semibold uppercase text-danger">
+                        {card.sla_bucket && card.sla_bucket !== "none" ? `${card.sla_bucket}+` : "Responder"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="glass-panel rounded-2xl border border-border/60 p-4 shadow-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="label-overline">Agenda de hoje</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">Mensagens programadas</p>
+              </div>
+              <span className="rounded-lg border border-border/60 bg-surface/60 px-2.5 py-1 text-xs text-secondary">
+                {scheduledToday.length}
+              </span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {scheduledToday.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border/60 px-3 py-5 text-center text-sm text-secondary">
+                  Nenhuma mensagem programada para hoje.
+                </p>
+              ) : (
+                scheduledToday.slice(0, 6).map((message) => (
+                  <div key={message.id} className="rounded-xl border border-border/60 bg-card px-3 py-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="line-clamp-2 text-sm text-foreground">{message.content}</p>
+                      <span className="shrink-0 text-xs font-semibold text-secondary">
+                        {new Date(message.scheduled_for).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ── Activity feed ────────────────────────────── */}

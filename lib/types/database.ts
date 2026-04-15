@@ -167,6 +167,98 @@ export interface Database {
         };
         Relationships: [];
       };
+      scheduled_messages: {
+        Row: {
+          id: string;
+          lead_id: string;
+          content: string;
+          scheduled_for: string;
+          status: ScheduledMessageStatus;
+          attempts: number;
+          last_error: string | null;
+          sent_at: string | null;
+          external_id: string | null;
+          message_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          lead_id: string;
+          content: string;
+          scheduled_for: string;
+          status?: ScheduledMessageStatus;
+          attempts?: number;
+          last_error?: string | null;
+          sent_at?: string | null;
+          external_id?: string | null;
+          message_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          content?: string;
+          scheduled_for?: string;
+          status?: ScheduledMessageStatus;
+          attempts?: number;
+          last_error?: string | null;
+          sent_at?: string | null;
+          external_id?: string | null;
+          message_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      message_templates: {
+        Row: {
+          id: string;
+          title: string;
+          content: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          content: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          title?: string;
+          content?: string;
+          is_active?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      crm_events: {
+        Row: {
+          id: string;
+          lead_id: string | null;
+          event_type: string;
+          source: string;
+          payload: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          lead_id?: string | null;
+          event_type: string;
+          source: string;
+          payload?: Record<string, unknown>;
+          created_at?: string;
+        };
+        Update: {
+          lead_id?: string | null;
+          event_type?: string;
+          source?: string;
+          payload?: Record<string, unknown>;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       kanban_cards_view: {
@@ -215,7 +307,17 @@ export type MessageMediaType =
   | "location"
   | "unknown";
 export type Message = Database["public"]["Tables"]["messages"]["Row"];
-export type KanbanCardRecord = Database["public"]["Views"]["kanban_cards_view"]["Row"];
+export type KanbanCardRecord = Database["public"]["Views"]["kanban_cards_view"]["Row"] & {
+  needs_response?: boolean;
+  last_message_type?: "entrada" | "saida" | null;
+  last_message_at?: string | null;
+  response_wait_hours?: number | null;
+  sla_bucket?: "none" | "24h" | "48h" | "72h";
+};
+export type ScheduledMessageStatus = "pending" | "processing" | "sent" | "failed" | "canceled";
+export type ScheduledMessage = Database["public"]["Tables"]["scheduled_messages"]["Row"];
+export type MessageTemplate = Database["public"]["Tables"]["message_templates"]["Row"];
+export type CrmEvent = Database["public"]["Tables"]["crm_events"]["Row"];
 export type ActivityStatus = "todo" | "doing" | "done";
 export type ActivityPriority = "low" | "medium" | "high";
 export type Activity = Database["public"]["Tables"]["activities"]["Row"];
@@ -263,4 +365,21 @@ export interface DashboardData {
   columns: Column[];
   cards: KanbanCardRecord[];
   selectedLeadMessages: Message[];
+  metrics?: OperationalMetrics;
+  scheduledToday?: ScheduledMessage[];
+}
+
+export interface ResponseStatus {
+  needsResponse: boolean;
+  lastMessageType: "entrada" | "saida" | null;
+  lastMessageAt: string | null;
+  waitHours: number | null;
+  slaBucket: "none" | "24h" | "48h" | "72h";
+}
+
+export interface OperationalMetrics {
+  needsResponse: number;
+  stale24h: number;
+  stale48h: number;
+  stale72h: number;
 }

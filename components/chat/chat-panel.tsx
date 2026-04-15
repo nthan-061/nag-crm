@@ -6,11 +6,12 @@ import { MessageCircleMore, Phone, Globe, Trash2 } from "lucide-react";
 import { MessageInput } from "@/components/chat/message-input";
 import { MessageList, type MessageListHandle } from "@/components/chat/message-list";
 import { NotesPanel } from "@/components/chat/notes-panel";
+import { ScheduledMessagesPanel } from "@/components/chat/scheduled-messages-panel";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { REALTIME_CHANNEL } from "@/lib/constants";
 import { cn, formatPhone } from "@/lib/utils";
-import type { KanbanCardRecord, Message } from "@/lib/types/database";
+import type { KanbanCardRecord, Message, ScheduledMessage } from "@/lib/types/database";
 
 const PRIORITY_COLOR: Record<string, string> = {
   alta: "text-danger",
@@ -35,6 +36,8 @@ export function ChatPanel({
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [scheduledMessages, setScheduledMessages] = useState<ScheduledMessage[]>([]);
+  const [cancelingScheduledId, setCancelingScheduledId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"chat" | "notes">("chat");
   const [isDeleting, startDeleteTransition] = useTransition();
   const latestRequestId = useRef(0);
@@ -61,12 +64,25 @@ export function ChatPanel({
     }
   }, [selectedCard?.lead_id]);
 
+  const loadScheduledMessages = useCallback(async () => {
+    if (!selectedCard?.lead_id) {
+      setScheduledMessages([]);
+      return;
+    }
+
+    const response = await fetch(`/api/scheduled-messages/${selectedCard.lead_id}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const payload = (await response.json()) as { data?: ScheduledMessage[] };
+    if (Array.isArray(payload.data)) setScheduledMessages(payload.data);
+  }, [selectedCard?.lead_id]);
+
   useEffect(() => {
     setActiveTab("chat");
     if (!selectedCard?.lead_id) { setMessages([]); setIsLoading(false); return; }
     setMessages([]);
     void loadMessages();
-  }, [loadMessages, selectedCard?.lead_id]);
+    void loadScheduledMessages();
+  }, [loadMessages, loadScheduledMessages, selectedCard?.lead_id]);
 
   useEffect(() => {
     if (!selectedCard?.lead_id) return;
@@ -74,9 +90,10 @@ export function ChatPanel({
     const channel = supabase
       .channel(`${REALTIME_CHANNEL}-chat-${selectedCard.lead_id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => void loadMessages({ silent: true }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "scheduled_messages" }, () => void loadScheduledMessages())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [loadMessages, selectedCard?.lead_id]);
+  }, [loadMessages, loadScheduledMessages, selectedCard?.lead_id]);
 
   useEffect(() => {
     if (!selectedCard?.lead_id) return;
@@ -97,6 +114,16 @@ export function ChatPanel({
     const interval = window.setInterval(processPendingMedia, 30000);
     return () => window.clearInterval(interval);
   }, [selectedCard?.lead_id]);
+
+  async function cancelScheduledMessage(scheduledMessageId: string) {
+    setCancelingScheduledId(scheduledMessageId);
+    try {
+      await fetch(`/api/scheduled-messages/item/${scheduledMessageId}`, { method: "DELETE", cache: "no-store" });
+      await loadScheduledMessages();
+    } finally {
+      setCancelingScheduledId(null);
+    }
+  }
 
   if (!selectedCard) {
     return (
@@ -180,9 +207,15 @@ export function ChatPanel({
         ) : activeTab === "chat" || !showTabs ? (
           <>
             <MessageList ref={messageListRef} messages={messages} leadId={selectedCard.lead_id} />
+            <ScheduledMessagesPanel
+              items={scheduledMessages}
+              onCancel={cancelScheduledMessage}
+              cancelingId={cancelingScheduledId}
+            />
             <div className="flex-shrink-0 border-t border-border/40 p-2.5">
               <MessageInput
                 leadId={selectedCard.lead_id}
+                onScheduled={loadScheduledMessages}
                 onSent={async () => {
                   // Force scroll to bottom when the user sends a message, regardless
                   // of their current scroll position, then load the updated list.

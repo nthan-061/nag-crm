@@ -2,7 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Clock, Globe, MessageCircleMore } from "lucide-react";
+import { Clock, Globe, MessageCircleMore, Reply } from "lucide-react";
 import { cn, formatPhone, formatRelativeTime } from "@/lib/utils";
 import type { KanbanCardRecord } from "@/lib/types/database";
 
@@ -102,6 +102,20 @@ export function KanbanCard({
           Sem mensagens ainda
         </p>
       )}
+
+      {card.needs_response ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-md border border-danger/20 bg-danger/[0.08] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-danger">
+            <Reply className="h-3 w-3" />
+            Responder
+          </span>
+          {card.sla_bucket && card.sla_bucket !== "none" ? (
+            <span className="rounded-md border border-warning/25 bg-warning/[0.08] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-warning">
+              {card.sla_bucket}+
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* ── Footer: time + origin ──────────────── */}
       <div className="mt-2.5 flex items-center justify-between">

@@ -1,6 +1,8 @@
 import { AppFrame } from "@/components/layout/app-frame";
 import { Card } from "@/components/ui/card";
 import { ReconciliationPanel } from "@/components/settings/reconciliation-panel";
+import { MessageTemplatesPanel } from "@/components/settings/message-templates-panel";
+import { RecentEventsPanel } from "@/components/settings/recent-events-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,11 @@ export default function SettingsPage() {
             Esta area pode receber configuracoes de equipe, integrações e observabilidade.
           </p>
         </Card>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <MessageTemplatesPanel />
+        <RecentEventsPanel />
       </div>
 
       <div className="mt-3">

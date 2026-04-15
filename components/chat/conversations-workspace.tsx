@@ -19,6 +19,7 @@ export function ConversationsWorkspace({
   const [cards, setCards] = useState(initialCards);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialCards[0]?.lead_id ?? null);
   const [search, setSearch] = useState("");
+  const [conversationFilter, setConversationFilter] = useState<"all" | "needs_response" | "mine_last" | "stale_24h">("all");
   const [notesOpen, setNotesOpen] = useState(true);
   const latestRefreshId = useRef(0);
 
@@ -68,14 +69,19 @@ export function ConversationsWorkspace({
 
   const filteredCards = useMemo(() => {
     const normalized = search.trim().toLowerCase();
-    if (!normalized) return cards;
+    return cards.filter((card) => {
+      if (conversationFilter === "needs_response" && !card.needs_response) return false;
+      if (conversationFilter === "mine_last" && card.last_message_type !== "saida") return false;
+      if (conversationFilter === "stale_24h" && card.sla_bucket === "none") return false;
+      if (!normalized) return true;
 
-    return cards.filter((card) =>
-      card.lead_nome.toLowerCase().includes(normalized) ||
-      card.lead_telefone.includes(normalized) ||
-      (card.ultima_mensagem ?? "").toLowerCase().includes(normalized)
-    );
-  }, [cards, search]);
+      return (
+        card.lead_nome.toLowerCase().includes(normalized) ||
+        card.lead_telefone.includes(normalized) ||
+        (card.ultima_mensagem ?? "").toLowerCase().includes(normalized)
+      );
+    });
+  }, [cards, conversationFilter, search]);
 
   const selectedCard = cards.find((card) => card.lead_id === selectedLeadId) ?? null;
 
@@ -93,6 +99,28 @@ export function ConversationsWorkspace({
               placeholder="Buscar conversa"
               className="pl-9"
             />
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {[
+              { id: "all", label: "Todas" },
+              { id: "needs_response", label: "Responder" },
+              { id: "mine_last", label: "Minha ultima" },
+              { id: "stale_24h", label: "24h+" }
+            ].map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setConversationFilter(filter.id as typeof conversationFilter)}
+                className={cn(
+                  "rounded-lg border px-2 py-1 text-[10px] font-semibold transition-colors",
+                  conversationFilter === filter.id
+                    ? "border-accent/30 bg-accent/[0.08] text-accent"
+                    : "border-border/60 bg-card text-secondary hover:border-accent/25 hover:text-accent"
+                )}
+              >
+                {filter.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -130,6 +158,18 @@ export function ConversationsWorkspace({
                   <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-secondary">
                     {card.ultima_mensagem ?? "Sem mensagens ainda"}
                   </p>
+                  {card.needs_response ? (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <span className="rounded-md border border-danger/20 bg-danger/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase text-danger">
+                        Responder
+                      </span>
+                      {card.sla_bucket && card.sla_bucket !== "none" ? (
+                        <span className="rounded-md border border-warning/25 bg-warning/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase text-warning">
+                          {card.sla_bucket}+
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </button>
               );
             })}

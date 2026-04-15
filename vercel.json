@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/scheduled-messages/process",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/messages/media/process-pending",
       "schedule": "0 3 * * *"
     }
