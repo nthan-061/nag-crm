@@ -48,6 +48,58 @@ export async function listCards(): Promise<KanbanCardRecord[]> {
     .filter((card): card is KanbanCardRecord => card !== null);
 }
 
+export async function listConversations(): Promise<KanbanCardRecord[]> {
+  const supabase = createSupabaseAdminClient();
+  const [{ data: leads, error: leadsError }, { data: cards, error: cardsError }, { data: messages, error: messagesError }] =
+    await Promise.all([
+      supabase.from("leads").select("*").is("deleted_at", null),
+      supabase.from("cards").select("*"),
+      supabase.from("messages").select("*").order("timestamp", { ascending: false })
+    ]);
+
+  if (leadsError) throw leadsError;
+  if (cardsError) throw cardsError;
+  if (messagesError) throw messagesError;
+
+  const cardByLeadId = new Map((cards ?? []).map((card) => [card.lead_id, card]));
+  const latestMessageByLeadId = new Map<string, { conteudo: string; timestamp: string }>();
+
+  for (const message of messages ?? []) {
+    if (isLeadNote(message.conteudo)) continue;
+    if (!latestMessageByLeadId.has(message.lead_id)) {
+      latestMessageByLeadId.set(message.lead_id, {
+        conteudo: message.conteudo,
+        timestamp: message.timestamp
+      });
+    }
+  }
+
+  return (leads ?? [])
+    .map((lead) => {
+      const card = cardByLeadId.get(lead.id);
+      const latestMessage = latestMessageByLeadId.get(lead.id);
+
+      return {
+        card_id: card?.id ?? `lead-${lead.id}`,
+        coluna_id: card?.coluna_id ?? "",
+        prioridade: card?.prioridade ?? "media",
+        responsavel: card?.responsavel ?? null,
+        ultima_interacao: card?.ultima_interacao ?? latestMessage?.timestamp ?? lead.criado_em,
+        criado_em: card?.criado_em ?? lead.criado_em,
+        lead_id: lead.id,
+        lead_nome: lead.nome,
+        lead_telefone: lead.telefone,
+        lead_origem: lead.origem,
+        ultima_mensagem: latestMessage?.conteudo ?? null
+      } satisfies KanbanCardRecord;
+    })
+    .sort((a, b) => {
+      const aTime = a.ultima_interacao ? new Date(a.ultima_interacao).getTime() : 0;
+      const bTime = b.ultima_interacao ? new Date(b.ultima_interacao).getTime() : 0;
+      return bTime - aTime;
+    });
+}
+
 export async function createCard(input: {
   lead_id: string;
   coluna_id: string;

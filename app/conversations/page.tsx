@@ -1,15 +1,15 @@
 import { ConversationsWorkspace } from "@/components/chat/conversations-workspace";
 import { CollapsibleAppFrame } from "@/components/layout/collapsible-app-frame";
-import { getDashboardData } from "@/lib/services/dashboard-service";
+import { listConversations } from "@/lib/repositories/cards-repository";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConversationsPage() {
-  const data = await getDashboardData();
+  const conversations = await listConversations();
 
   return (
     <CollapsibleAppFrame>
-      <ConversationsWorkspace initialCards={data.cards} />
+      <ConversationsWorkspace initialCards={conversations} />
     </CollapsibleAppFrame>
   );
 }

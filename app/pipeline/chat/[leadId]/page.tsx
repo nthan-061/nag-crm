@@ -1,6 +1,6 @@
 import { LeadChatScreen } from "@/components/chat/lead-chat-screen";
 import { AppFrame } from "@/components/layout/app-frame";
-import { getDashboardData } from "@/lib/services/dashboard-service";
+import { listConversations } from "@/lib/repositories/cards-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +9,8 @@ export default async function PipelineChatPage({
 }: {
   params: { leadId: string };
 }) {
-  const data = await getDashboardData();
-  const selectedCard = data.cards.find((card) => card.lead_id === params.leadId) ?? null;
+  const conversations = await listConversations();
+  const selectedCard = conversations.find((card) => card.lead_id === params.leadId) ?? null;
 
   return (
     <AppFrame>

@@ -26,7 +26,7 @@ export function ConversationsWorkspace({
     const refreshId = ++latestRefreshId.current;
 
     try {
-      const response = await fetch("/api/cards", { cache: "no-store" });
+      const response = await fetch("/api/conversations", { cache: "no-store" });
       if (!response.ok) return;
 
       const payload = (await response.json()) as { data?: KanbanCardRecord[] };
