@@ -87,7 +87,10 @@ export function MessageInput({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [sendStatus, setSendStatus] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -136,13 +139,13 @@ export function MessageInput({
     setAttachments((current) => {
       const availableSlots = MAX_FILES - current.length;
       if (availableSlots <= 0) {
-        window.alert(`Envie no maximo ${MAX_FILES} arquivos por vez.`);
+        setSendError(`Envie no maximo ${MAX_FILES} arquivos por vez.`);
         return current;
       }
 
       const accepted = files.slice(0, availableSlots);
       if (accepted.length < files.length) {
-        window.alert(`Apenas ${availableSlots} arquivo(s) foram adicionados. O limite e ${MAX_FILES}.`);
+        setSendError(`Apenas ${availableSlots} arquivo(s) foram adicionados. O limite e ${MAX_FILES}.`);
       }
 
       return [
@@ -315,22 +318,27 @@ export function MessageInput({
     if (!leadId || isSending || recordingState !== "idle" || (!value.trim() && attachments.length === 0)) return;
 
     setIsSending(true);
+    setSendError(null);
     try {
       if (value.trim()) {
+        setSendStatus("Enviando mensagem...");
         await sendTextMessage();
       }
 
       if (attachments.length > 0) {
+        setSendStatus(`Enviando ${attachments.length} anexo(s)...`);
         await sendMediaBatch();
       }
 
       setValue("");
       clearAttachments();
       await onSent();
+      textareaRef.current?.focus();
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Falha ao enviar mensagem");
+      setSendError(error instanceof Error ? error.message : "Falha ao enviar mensagem");
       await onSent();
     } finally {
+      setSendStatus(null);
       setIsSending(false);
     }
   }
@@ -423,6 +431,21 @@ export function MessageInput({
         </div>
       ) : null}
 
+      {sendStatus ? (
+        <div className="rounded-lg border border-accent/20 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-secondary">
+          {sendStatus}
+        </div>
+      ) : null}
+
+      {sendError ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <span>{sendError}</span>
+          <button type="button" className="font-semibold hover:underline" onClick={() => setSendError(null)}>
+            Fechar
+          </button>
+        </div>
+      ) : null}
+
       <div className="relative">
         <button
           type="button"
@@ -434,6 +457,7 @@ export function MessageInput({
           <Paperclip className="h-4 w-4" />
         </button>
         <Textarea
+          ref={textareaRef}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={(event) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { closestCorners, DndContext, DragOverlay, type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { ColumnManager } from "@/components/kanban/column-manager";
@@ -26,7 +26,10 @@ export function CrmBoard({
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialCards[0]?.lead_id ?? null);
   const [showColumnManager, setShowColumnManager] = useState(false);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [movingCardId, setMovingCardId] = useState<string | null>(null);
+  const [boardNotice, setBoardNotice] = useState<string | null>(null);
   const latestRefreshId = useRef(0);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -108,6 +111,7 @@ export function CrmBoard({
   }
 
   function handleDragStart(event: DragStartEvent) {
+    setBoardNotice(null);
     setActiveCardId(event.active.id?.toString() ?? null);
   }
 
@@ -120,6 +124,8 @@ export function CrmBoard({
     if (!activeId || !overId || fromColumnId === overId) return;
 
     const previousCards = cards;
+    setMovingCardId(activeId);
+    setBoardNotice("Movendo lead...");
     setCards((current) =>
       current.map((card) =>
         card.card_id === activeId ? { ...card, coluna_id: overId, ultima_interacao: new Date().toISOString() } : card
@@ -135,14 +141,19 @@ export function CrmBoard({
 
       if (!response.ok) {
         setCards(previousCards);
+        setBoardNotice("Nao foi possivel mover o lead. A posicao anterior foi restaurada.");
         return;
       }
     } catch {
       setCards(previousCards);
+      setBoardNotice("Nao foi possivel mover o lead. A posicao anterior foi restaurada.");
       return;
+    } finally {
+      setMovingCardId(null);
     }
 
     await refreshCards();
+    setBoardNotice(null);
   }
 
   const activeCard = cards.find((card) => card.card_id === activeCardId) ?? null;
@@ -212,10 +223,15 @@ export function CrmBoard({
     }
   }, [cards, selectedLeadId]);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search), 180);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
   const groupedCards = useMemo(
     () =>
       columns.reduce<Record<string, KanbanCardRecord[]>>((acc, column) => {
-        const normalizedSearch = search.trim().toLowerCase();
+        const normalizedSearch = debouncedSearch.trim().toLowerCase();
         acc[column.id] = cards.filter((card) => {
           const matchesColumn = card.coluna_id === column.id;
           if (!matchesColumn) return false;
@@ -229,7 +245,7 @@ export function CrmBoard({
         });
         return acc;
       }, {}),
-    [cards, columns, search]
+    [cards, columns, debouncedSearch]
   );
 
   const selectedCard = cards.find((card) => card.lead_id === selectedLeadId) ?? null;
@@ -277,7 +293,19 @@ export function CrmBoard({
           />
         )}
 
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveCardId(null)}>
+        {boardNotice && (
+          <div className="mb-3 rounded-xl border border-accent/20 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-secondary">
+            {boardNotice}
+          </div>
+        )}
+
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveCardId(null)}
+        >
           <ScrollArea className="w-full">
             <div className="flex min-h-[calc(100vh-150px)] gap-4 pb-6">
               {columns.map((column) => (
@@ -287,6 +315,7 @@ export function CrmBoard({
                   cards={groupedCards[column.id] ?? []}
                   selectedLeadId={selectedLeadId}
                   onSelectLead={setSelectedLeadId}
+                  movingCardId={movingCardId}
                 />
               ))}
             </div>

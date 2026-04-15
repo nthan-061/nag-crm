@@ -56,6 +56,9 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
   const [editingActivity, setEditingActivity] = useState<ActivityWithLead | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [movingActivityId, setMovingActivityId] = useState<string | null>(null);
+  const [deletingActivityId, setDeletingActivityId] = useState<string | null>(null);
+  const [boardNotice, setBoardNotice] = useState<string | null>(null);
   const latestRefreshId = useRef(0);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -108,6 +111,7 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
 
   async function handleSubmit(values: ActivityFormValues) {
     setSaving(true);
+    setBoardNotice(null);
 
     try {
       const response = await fetch(editingActivity ? `/api/activities/${editingActivity.id}` : "/api/activities", {
@@ -122,7 +126,7 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
       };
 
       if (!response.ok) {
-        window.alert(payload.error ?? "Nao foi possivel salvar a atividade.");
+        setBoardNotice(payload.error ?? "Nao foi possivel salvar a atividade.");
         return;
       }
 
@@ -138,6 +142,8 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
     if (!window.confirm(`Excluir "${activity.title}"?`)) return;
 
     const previousColumns = columns;
+    setDeletingActivityId(activity.id);
+    setBoardNotice("Excluindo atividade...");
     setColumns((current) =>
       current.map((column) => ({
         ...column,
@@ -153,14 +159,17 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
 
       if (!response.ok) {
         setColumns(previousColumns);
-        window.alert("Nao foi possivel excluir a atividade.");
+        setBoardNotice("Nao foi possivel excluir a atividade.");
         return;
       }
 
       await refreshBoard();
+      setBoardNotice(null);
     } catch {
       setColumns(previousColumns);
-      window.alert("Nao foi possivel excluir a atividade.");
+      setBoardNotice("Nao foi possivel excluir a atividade.");
+    } finally {
+      setDeletingActivityId(null);
     }
   }
 
@@ -204,6 +213,8 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
     }
 
     const normalizedColumns = cloneColumns(nextColumns);
+    setMovingActivityId(activeId);
+    setBoardNotice("Salvando nova posicao...");
     setColumns(normalizedColumns);
 
     const sourceColumn = getColumn(normalizedColumns, source.column.id);
@@ -227,14 +238,19 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
 
       if (!response.ok) {
         setColumns(previousColumns);
+        setBoardNotice("Nao foi possivel mover a atividade. A ordem anterior foi restaurada.");
         return;
       }
     } catch {
       setColumns(previousColumns);
+      setBoardNotice("Nao foi possivel mover a atividade. A ordem anterior foi restaurada.");
       return;
+    } finally {
+      setMovingActivityId(null);
     }
 
     await refreshBoard();
+    setBoardNotice(null);
   }
 
   return (
@@ -261,9 +277,21 @@ export function ActivitiesBoard({ initialBoard }: { initialBoard: ActivitiesBoar
         onDragCancel={() => setActiveActivityId(null)}
       >
         <ScrollArea className="min-w-0 flex-1">
+          {boardNotice ? (
+            <div className="mb-3 rounded-xl border border-accent/20 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-secondary">
+              {boardNotice}
+            </div>
+          ) : null}
           <div className="flex h-[calc(100vh-145px)] gap-4 pb-6">
             {columns.map((column) => (
-              <ActivityColumn key={column.id} column={column} onEdit={openEditDialog} onDelete={handleDelete} />
+              <ActivityColumn
+                key={column.id}
+                column={column}
+                onEdit={openEditDialog}
+                onDelete={handleDelete}
+                movingActivityId={movingActivityId}
+                deletingActivityId={deletingActivityId}
+              />
             ))}
           </div>
         </ScrollArea>

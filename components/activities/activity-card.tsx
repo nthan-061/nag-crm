@@ -40,13 +40,15 @@ export function ActivityCard({
   onEdit,
   onDelete,
   draggable = true,
-  isOverlay = false
+  isOverlay = false,
+  isBusy = false
 }: {
   activity: ActivityWithLead;
   onEdit?: (activity: ActivityWithLead) => void;
   onDelete?: (activity: ActivityWithLead) => void;
   draggable?: boolean;
   isOverlay?: boolean;
+  isBusy?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: activity.id,
@@ -64,8 +66,10 @@ export function ActivityCard({
         "glass-panel rounded-xl border border-border/50 p-4 shadow-card transition-all duration-150",
         "hover:border-border-strong hover:shadow-premium",
         isDragging && "opacity-30 scale-[0.98]",
-        isOverlay && "rotate-[0.5deg] shadow-elevated ring-1 ring-accent/25 opacity-95"
+        isOverlay && "rotate-[0.5deg] shadow-elevated ring-1 ring-accent/25 opacity-95",
+        isBusy && "opacity-70 ring-1 ring-accent/20"
       )}
+      aria-busy={isBusy}
     >
       <div className="flex items-start gap-2">
         <button
@@ -120,6 +124,7 @@ export function ActivityCard({
             className="flex h-8 w-8 items-center justify-center rounded-lg text-secondary transition hover:bg-accent/[0.06] hover:text-foreground"
             onClick={() => onEdit?.(activity)}
             aria-label="Editar atividade"
+            disabled={isBusy}
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
@@ -128,6 +133,7 @@ export function ActivityCard({
             className="flex h-8 w-8 items-center justify-center rounded-lg text-secondary transition hover:bg-danger/[0.08] hover:text-danger"
             onClick={() => onDelete?.(activity)}
             aria-label="Excluir atividade"
+            disabled={isBusy}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

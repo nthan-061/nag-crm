@@ -16,6 +16,7 @@ const ORIGIN_LABEL: Record<string, string> = {
 
 export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
   const [leads, setLeads] = useState(initialLeads);
+  const [deletingLeadIds, setDeletingLeadIds] = useState<Set<string>>(() => new Set());
   const [isPending, startTransition] = useTransition();
   const deletingIds = useRef<Set<string>>(new Set());
   const router = useRouter();
@@ -47,6 +48,7 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
     startTransition(() => {
       void (async () => {
         deletingIds.current.add(leadId);
+        setDeletingLeadIds((current) => new Set(current).add(leadId));
         setLeads((current) => current.filter((lead) => lead.id !== leadId));
 
         const response = await fetch(`/api/leads/${leadId}`, {
@@ -56,6 +58,11 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
 
         if (!response.ok) {
           deletingIds.current.delete(leadId);
+          setDeletingLeadIds((current) => {
+            const next = new Set(current);
+            next.delete(leadId);
+            return next;
+          });
           await syncLeads();
           router.refresh();
           const payload = (await response.json().catch(() => ({ error: "Nao foi possivel apagar o lead." }))) as {
@@ -67,7 +74,14 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
 
         emitLeadDeleted(leadId);
         router.refresh();
-        setTimeout(() => { deletingIds.current.delete(leadId); }, 3000);
+        setTimeout(() => {
+          deletingIds.current.delete(leadId);
+          setDeletingLeadIds((current) => {
+            const next = new Set(current);
+            next.delete(leadId);
+            return next;
+          });
+        }, 3000);
       })();
     });
   }
@@ -123,36 +137,40 @@ export function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
-              {leads.map((lead) => (
-                <tr key={lead.id} className="group transition-colors hover:bg-accent/[0.035]">
-                  <td className="px-6 py-3.5">
-                    <span className="font-semibold text-foreground">{lead.nome}</span>
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <span className="font-mono text-xs text-secondary">{formatPhone(lead.telefone)}</span>
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <span className="rounded-md border border-border/50 bg-surface/60 px-2 py-0.5 text-xs text-secondary/80">
-                      {ORIGIN_LABEL[lead.origem ?? "manual"] ?? (lead.origem ?? "manual")}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <span className="text-secondary/70 text-xs">
-                      {new Date(lead.criado_em).toLocaleString("pt-BR")}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3.5 text-right">
-                    <button
-                      type="button"
-                      className="opacity-0 group-hover:opacity-100 text-tertiary transition-all hover:text-danger"
-                      onClick={() => handleDelete(lead.id)}
-                      disabled={isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {leads.map((lead) => {
+                const isDeleting = deletingLeadIds.has(lead.id);
+                return (
+                  <tr key={lead.id} className={`group transition-colors hover:bg-accent/[0.035] ${isDeleting ? "opacity-60" : ""}`}>
+                    <td className="px-6 py-3.5">
+                      <span className="font-semibold text-foreground">{lead.nome}</span>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span className="font-mono text-xs text-secondary">{formatPhone(lead.telefone)}</span>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span className="rounded-md border border-border/50 bg-surface/60 px-2 py-0.5 text-xs text-secondary/80">
+                        {ORIGIN_LABEL[lead.origem ?? "manual"] ?? (lead.origem ?? "manual")}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span className="text-secondary/70 text-xs">
+                        {new Date(lead.criado_em).toLocaleString("pt-BR")}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-right">
+                      <button
+                        type="button"
+                        className="text-tertiary opacity-100 transition-all hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                        onClick={() => handleDelete(lead.id)}
+                        disabled={isPending || isDeleting}
+                        aria-label={`Apagar ${lead.nome}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -16,11 +16,15 @@ const COLUMN_DOT: Record<string, string> = {
 export function ActivityColumn({
   column,
   onEdit,
-  onDelete
+  onDelete,
+  movingActivityId,
+  deletingActivityId
 }: {
   column: ActivityBoardColumn;
   onEdit: (activity: ActivityWithLead) => void;
   onDelete: (activity: ActivityWithLead) => void;
+  movingActivityId?: string | null;
+  deletingActivityId?: string | null;
 }) {
   const { isOver, setNodeRef } = useDroppable({
     id: column.id,
@@ -56,7 +60,13 @@ export function ActivityColumn({
               </div>
             )}
             {column.activities.map((activity) => (
-              <ActivityCard key={activity.id} activity={activity} onEdit={onEdit} onDelete={onDelete} />
+              <ActivityCard
+                key={activity.id}
+                activity={activity}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                isBusy={movingActivityId === activity.id || deletingActivityId === activity.id}
+              />
             ))}
           </div>
         </SortableContext>

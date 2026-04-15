@@ -26,6 +26,7 @@ export function ChatPanel({
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "notes">("chat");
   const [isDeleting, startDeleteTransition] = useTransition();
   const latestRequestId = useRef(0);
@@ -40,6 +41,7 @@ export function ChatPanel({
 
     const requestId = ++latestRequestId.current;
     if (!silent) setIsLoading(true);
+    if (silent) setIsRefreshing(true);
 
     try {
       const response = await fetch(`/api/messages/${selectedCard.lead_id}`, { cache: "no-store" });
@@ -49,6 +51,7 @@ export function ChatPanel({
       setMessages(payload.data);
     } finally {
       if (!silent && requestId === latestRequestId.current) setIsLoading(false);
+      if (silent && requestId === latestRequestId.current) setIsRefreshing(false);
     }
   }, [selectedCard?.lead_id]);
 
@@ -156,11 +159,21 @@ export function ChatPanel({
       {/* ── Content ──────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {activeTab === "chat" && isLoading && messages.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center text-xs text-secondary/50">
-            Carregando conversa...
+          <div className="flex flex-1 flex-col justify-end gap-3 p-4">
+            {[0, 1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className={`h-12 animate-pulse rounded-2xl bg-muted/70 ${item % 2 === 0 ? "mr-16" : "ml-16"}`}
+              />
+            ))}
           </div>
         ) : activeTab === "chat" ? (
           <>
+            {isRefreshing ? (
+              <div className="border-b border-border/30 bg-accent/[0.04] px-4 py-1.5 text-center text-[11px] font-medium text-secondary">
+                Atualizando conversa...
+              </div>
+            ) : null}
             <MessageList ref={messageListRef} messages={messages} leadId={selectedCard.lead_id} />
             <div className="flex-shrink-0 border-t border-border/40 p-4">
               <MessageInput

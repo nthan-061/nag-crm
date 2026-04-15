@@ -11,11 +11,13 @@ export function KanbanColumn({
   cards,
   selectedLeadId,
   onSelectLead,
+  movingCardId
 }: {
   column: Column;
   cards: KanbanCardRecord[];
   selectedLeadId: string | null;
   onSelectLead: (leadId: string) => void;
+  movingCardId?: string | null;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: column.id });
 
@@ -64,6 +66,7 @@ export function KanbanColumn({
               card={card}
               isSelected={selectedLeadId === card.lead_id}
               onSelect={onSelectLead}
+              isPersisting={movingCardId === card.card_id}
             />
           ))}
         </div>

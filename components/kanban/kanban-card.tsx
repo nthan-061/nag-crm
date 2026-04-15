@@ -30,12 +30,14 @@ export function KanbanCard({
   onSelect,
   draggable = true,
   isOverlay = false,
+  isPersisting = false,
 }: {
   card: KanbanCardRecord;
   isSelected: boolean;
   onSelect: (leadId: string) => void;
   draggable?: boolean;
   isOverlay?: boolean;
+  isPersisting?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.card_id,
@@ -62,10 +64,12 @@ export function KanbanCard({
         // Drag states
         isDragging && "opacity-30 scale-[0.98]",
         isOverlay && "rotate-[0.5deg] shadow-elevated ring-1 ring-accent/20 opacity-95",
+        isPersisting && "ring-1 ring-accent/25 after:absolute after:inset-x-4 after:top-2 after:h-0.5 after:rounded-full after:bg-accent/60 after:content-[''] after:animate-pulse",
       )}
       {...(draggable ? listeners : {})}
       {...(draggable ? attributes : {})}
       onClick={() => onSelect(card.lead_id)}
+      aria-busy={isPersisting}
     >
       {/* ── Header: name + priority ────────────── */}
       <div className="flex items-start justify-between gap-2">

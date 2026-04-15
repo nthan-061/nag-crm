@@ -10,6 +10,19 @@
   border-color: rgba(13, 32, 71, 0.13);
 }
 
+button,
+a,
+input,
+textarea,
+select {
+  transition-duration: 160ms;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.55);
+  outline-offset: 2px;
+}
+
 html,
 body {
   min-height: 100%;

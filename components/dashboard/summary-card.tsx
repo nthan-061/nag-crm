@@ -17,7 +17,7 @@ export function SummaryCard({
   return (
     <div
       className={cn(
-        "glass-panel relative rounded-2xl border border-border/60 p-5 shadow-card overflow-hidden",
+        "glass-panel relative overflow-hidden rounded-2xl border border-border/60 p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/25 hover:shadow-premium",
         accent && "border-accent/30"
       )}
     >
@@ -33,7 +33,7 @@ export function SummaryCard({
         )}
       </div>
 
-      <p className="mt-4 text-4xl font-bold tracking-tight text-foreground leading-none">
+      <p className="mt-4 text-4xl font-bold tabular-nums tracking-tight text-foreground leading-none transition-colors duration-200">
         {value}
       </p>
       <p className="mt-2.5 text-xs text-secondary/70 leading-relaxed">{helper}</p>
