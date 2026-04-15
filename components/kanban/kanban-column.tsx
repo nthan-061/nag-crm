@@ -11,12 +11,14 @@ export function KanbanColumn({
   cards,
   selectedLeadId,
   onSelectLead,
+  onOpenChat,
   movingCardId
 }: {
   column: Column;
   cards: KanbanCardRecord[];
   selectedLeadId: string | null;
   onSelectLead: (leadId: string) => void;
+  onOpenChat?: (leadId: string) => void;
   movingCardId?: string | null;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: column.id });
@@ -66,6 +68,7 @@ export function KanbanColumn({
               card={card}
               isSelected={selectedLeadId === card.lead_id}
               onSelect={onSelectLead}
+              onOpenChat={onOpenChat}
               isPersisting={movingCardId === card.card_id}
             />
           ))}

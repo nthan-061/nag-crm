@@ -3,12 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, KanbanSquare, ListTodo, Users, Settings } from "lucide-react";
+import { BarChart3, KanbanSquare, ListTodo, MessageCircleMore, Users, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { label: "Dashboard", icon: BarChart3, href: "/dashboard" },
   { label: "Pipeline", icon: KanbanSquare, href: "/pipeline" },
+  { label: "Conversas", icon: MessageCircleMore, href: "/conversations" },
   { label: "Atividades", icon: ListTodo, href: "/activities" },
   { label: "Leads", icon: Users, href: "/leads" },
   { label: "Configuracoes", icon: Settings, href: "/settings" },

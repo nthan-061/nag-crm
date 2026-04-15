@@ -1,8 +1,17 @@
 "use client";
 
-import { closestCorners, DndContext, DragOverlay, type DragEndEvent, type DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  closestCorners,
+  DndContext,
+  DragOverlay,
+  type DragEndEvent,
+  type DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from "@dnd-kit/core";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChatPanel } from "@/components/chat/chat-panel";
 import { ColumnManager } from "@/components/kanban/column-manager";
 import { KanbanCard } from "@/components/kanban/kanban-card";
 import { KanbanColumn } from "@/components/kanban/kanban-column";
@@ -10,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { REALTIME_CHANNEL } from "@/lib/constants";
-import { LEAD_DELETED_EVENT, LEAD_DELETED_STORAGE_KEY, emitLeadDeleted } from "@/lib/lead-events";
+import { LEAD_DELETED_EVENT, LEAD_DELETED_STORAGE_KEY } from "@/lib/lead-events";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { Column, KanbanCardRecord } from "@/lib/types/database";
 
@@ -31,24 +40,18 @@ export function CrmBoard({
   const [movingCardId, setMovingCardId] = useState<string | null>(null);
   const [boardNotice, setBoardNotice] = useState<string | null>(null);
   const latestRefreshId = useRef(0);
+  const router = useRouter();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   async function refreshCards() {
     const refreshId = ++latestRefreshId.current;
 
     try {
-      const response = await fetch("/api/cards", {
-        cache: "no-store"
-      });
-
-      if (!response.ok) {
-        return;
-      }
+      const response = await fetch("/api/cards", { cache: "no-store" });
+      if (!response.ok) return;
 
       const payload = (await response.json()) as { data?: KanbanCardRecord[] };
-      if (refreshId !== latestRefreshId.current || !Array.isArray(payload.data)) {
-        return;
-      }
+      if (refreshId !== latestRefreshId.current || !Array.isArray(payload.data)) return;
 
       setCards(payload.data);
     } catch {
@@ -58,55 +61,15 @@ export function CrmBoard({
 
   async function refreshColumns() {
     try {
-      const response = await fetch("/api/columns", {
-        cache: "no-store"
-      });
-
-      if (!response.ok) {
-        return;
-      }
+      const response = await fetch("/api/columns", { cache: "no-store" });
+      if (!response.ok) return;
 
       const payload = (await response.json()) as { data?: Column[] };
-      if (!Array.isArray(payload.data)) {
-        return;
-      }
+      if (!Array.isArray(payload.data)) return;
 
       setColumns(payload.data);
     } catch {
       // Keep the current board visible if columns refresh fails.
-    }
-  }
-
-  async function handleDeleteLead(leadId: string) {
-    const card = cards.find((item) => item.lead_id === leadId);
-    const leadName = card?.lead_nome ?? "este lead";
-    if (!window.confirm(`Tem certeza que deseja apagar ${leadName}? Esta acao remove card e mensagens relacionadas.`)) {
-      return;
-    }
-
-    const previousCards = cards;
-    setCards((current) => current.filter((item) => item.lead_id !== leadId));
-
-    try {
-      const response = await fetch(`/api/leads/${leadId}`, {
-        method: "DELETE",
-        cache: "no-store"
-      });
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => ({ error: "Nao foi possivel apagar o lead." }))) as {
-          error?: string;
-        };
-        setCards(previousCards);
-        window.alert(payload.error ?? "Nao foi possivel apagar o lead.");
-        return;
-      }
-
-      emitLeadDeleted(leadId);
-      await refreshCards();
-    } catch {
-      setCards(previousCards);
-      window.alert("Nao foi possivel apagar o lead.");
     }
   }
 
@@ -158,8 +121,6 @@ export function CrmBoard({
 
   const activeCard = cards.find((card) => card.card_id === activeCardId) ?? null;
 
-  // Fetch fresh data immediately on mount — the SSR snapshot may be stale
-  // if the router served a cached version of the page (Next.js 14 client cache).
   useEffect(() => {
     void refreshCards();
     void refreshColumns();
@@ -187,12 +148,10 @@ export function CrmBoard({
   }, []);
 
   useEffect(() => {
-    // Cross-tab: storage event fires when another tab writes to localStorage
     function handleStorage(event: StorageEvent) {
       if (event.key !== LEAD_DELETED_STORAGE_KEY || !event.newValue) return;
       void refreshCards();
     }
-    // Same-tab: CustomEvent fires when /leads deletes a lead in the same browser tab
     function handleCustomEvent() {
       void refreshCards();
     }
@@ -207,9 +166,7 @@ export function CrmBoard({
 
   useEffect(() => {
     if (!cards.length) {
-      if (selectedLeadId !== null) {
-        setSelectedLeadId(null);
-      }
+      if (selectedLeadId !== null) setSelectedLeadId(null);
       return;
     }
 
@@ -233,8 +190,7 @@ export function CrmBoard({
       columns.reduce<Record<string, KanbanCardRecord[]>>((acc, column) => {
         const normalizedSearch = debouncedSearch.trim().toLowerCase();
         acc[column.id] = cards.filter((card) => {
-          const matchesColumn = card.coluna_id === column.id;
-          if (!matchesColumn) return false;
+          if (card.coluna_id !== column.id) return false;
           if (!normalizedSearch) return true;
 
           return (
@@ -248,95 +204,91 @@ export function CrmBoard({
     [cards, columns, debouncedSearch]
   );
 
-  const selectedCard = cards.find((card) => card.lead_id === selectedLeadId) ?? null;
-
   return (
-    <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <div className="min-w-0">
-        <div className="mb-5">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <p className="label-overline">Pipeline em tempo real</p>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
-                Kanban comercial
-              </h2>
-              <p className="mt-1.5 text-sm text-secondary">
-                Arraste cards entre etapas e acompanhe as conversas no painel lateral.
-              </p>
+    <div className="h-full min-w-0">
+      <div className="mb-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="label-overline">Pipeline em tempo real</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+              Kanban comercial
+            </h2>
+            <p className="mt-1.5 text-sm text-secondary">
+              Arraste cards entre etapas. Use o botao de conversa em cada lead para abrir o chat em tela dedicada.
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-[260px]">
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar lead, telefone ou mensagem"
+              />
             </div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-[260px]">
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Buscar lead, telefone ou mensagem"
-                />
-              </div>
-              <Button
-                variant="secondary"
-                className="whitespace-nowrap"
-                onClick={() => setShowColumnManager((current) => !current)}
-              >
-                {showColumnManager ? "Fechar" : "Editar colunas"}
-              </Button>
-            </div>
+            <Button
+              variant="secondary"
+              className="whitespace-nowrap"
+              onClick={() => setShowColumnManager((current) => !current)}
+            >
+              {showColumnManager ? "Fechar" : "Editar colunas"}
+            </Button>
           </div>
         </div>
+      </div>
 
-        {showColumnManager && (
-          <ColumnManager
-            columns={columns}
-            onUpdated={async () => {
-              await refreshColumns();
-              await refreshCards();
-            }}
-          />
-        )}
+      {showColumnManager && (
+        <ColumnManager
+          columns={columns}
+          onUpdated={async () => {
+            await refreshColumns();
+            await refreshCards();
+          }}
+        />
+      )}
 
-        {boardNotice && (
-          <div className="mb-3 rounded-xl border border-accent/20 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-secondary">
-            {boardNotice}
+      {boardNotice && (
+        <div className="mb-3 rounded-xl border border-accent/20 bg-accent/[0.06] px-3 py-2 text-xs font-medium text-secondary">
+          {boardNotice}
+        </div>
+      )}
+
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveCardId(null)}
+      >
+        <ScrollArea className="w-full">
+          <div className="flex min-h-[calc(100vh-150px)] gap-4 pb-6">
+            {columns.map((column) => (
+              <KanbanColumn
+                key={column.id}
+                column={column}
+                cards={groupedCards[column.id] ?? []}
+                selectedLeadId={selectedLeadId}
+                onSelectLead={setSelectedLeadId}
+                onOpenChat={(leadId) => router.push(`/pipeline/chat/${leadId}`)}
+                movingCardId={movingCardId}
+              />
+            ))}
           </div>
-        )}
+        </ScrollArea>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={() => setActiveCardId(null)}
-        >
-          <ScrollArea className="w-full">
-            <div className="flex min-h-[calc(100vh-150px)] gap-4 pb-6">
-              {columns.map((column) => (
-                <KanbanColumn
-                  key={column.id}
-                  column={column}
-                  cards={groupedCards[column.id] ?? []}
-                  selectedLeadId={selectedLeadId}
-                  onSelectLead={setSelectedLeadId}
-                  movingCardId={movingCardId}
-                />
-              ))}
+        <DragOverlay>
+          {activeCard ? (
+            <div className="w-[320px]">
+              <KanbanCard
+                card={activeCard}
+                isSelected={selectedLeadId === activeCard.lead_id}
+                onSelect={setSelectedLeadId}
+                draggable={false}
+                isOverlay
+              />
             </div>
-          </ScrollArea>
-          <DragOverlay>
-            {activeCard ? (
-              <div className="w-[320px]">
-                <KanbanCard card={activeCard} isSelected={selectedLeadId === activeCard.lead_id} onSelect={setSelectedLeadId} draggable={false} isOverlay />
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      </div>
-
-      {/* Explicit viewport-relative height so ChatPanel.h-full has a
-          concrete value to inherit — bypasses the fragile h-full cascade
-          through grid tracks. Matches AppFrame padding: p-4 mobile (2×16px),
-          md:p-5 desktop (2×20px). */}
-      <div className="h-[calc(100vh-2rem)] md:h-[calc(100vh-2.5rem)] min-h-0">
-        <ChatPanel selectedCard={selectedCard} onDeleteLead={handleDeleteLead} />
-      </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }

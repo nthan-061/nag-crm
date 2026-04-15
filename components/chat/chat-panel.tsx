@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import type { ReactNode } from "react";
 import { MessageCircleMore, Phone, Globe, Trash2 } from "lucide-react";
 import { MessageInput } from "@/components/chat/message-input";
 import { MessageList, type MessageListHandle } from "@/components/chat/message-list";
@@ -8,7 +9,7 @@ import { NotesPanel } from "@/components/chat/notes-panel";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { REALTIME_CHANNEL } from "@/lib/constants";
-import { formatPhone } from "@/lib/utils";
+import { cn, formatPhone } from "@/lib/utils";
 import type { KanbanCardRecord, Message } from "@/lib/types/database";
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -20,9 +21,17 @@ const PRIORITY_COLOR: Record<string, string> = {
 export function ChatPanel({
   selectedCard,
   onDeleteLead,
+  className,
+  headerActions,
+  showTabs = true,
+  showDeleteAction = true,
 }: {
   selectedCard: KanbanCardRecord | null;
   onDeleteLead: (leadId: string) => Promise<void>;
+  className?: string;
+  headerActions?: ReactNode;
+  showTabs?: boolean;
+  showDeleteAction?: boolean;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -94,7 +103,7 @@ export function ChatPanel({
 
   if (!selectedCard) {
     return (
-      <div className="glass-panel flex h-full flex-col items-center justify-center rounded-2xl border border-border/50 text-center p-8 shadow-card">
+      <div className={cn("glass-panel flex h-full flex-col items-center justify-center rounded-2xl border border-border/50 text-center p-8 shadow-card", className)}>
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/20 bg-accent-muted/40">
           <MessageCircleMore className="h-7 w-7 text-accent/70" />
         </div>
@@ -107,7 +116,7 @@ export function ChatPanel({
   }
 
   return (
-    <div className="glass-panel flex h-full flex-col rounded-2xl border border-border/50 shadow-card overflow-hidden">
+    <div className={cn("glass-panel flex h-full flex-col rounded-2xl border border-border/50 shadow-card overflow-hidden", className)}>
 
       {/* ── Lead header ──────────────────────────── */}
       <div className="border-b border-border/40 px-5 py-4">
@@ -119,11 +128,13 @@ export function ChatPanel({
             </h2>
           </div>
 
-          {/* Origin tag */}
-          <span className="flex-shrink-0 flex items-center gap-1.5 rounded-lg border border-border/60 bg-surface/60 px-2.5 py-1 text-[11px] font-medium text-secondary/80">
-            <Globe className="h-3 w-3" />
-            {selectedCard.lead_origem ?? "whatsapp"}
-          </span>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <span className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-surface/60 px-2.5 py-1 text-[11px] font-medium text-secondary/80">
+              <Globe className="h-3 w-3" />
+              {selectedCard.lead_origem ?? "whatsapp"}
+            </span>
+            {headerActions}
+          </div>
         </div>
 
         {/* Contact row */}
@@ -139,6 +150,7 @@ export function ChatPanel({
       </div>
 
       {/* ── Tabs ─────────────────────────────────── */}
+      {showTabs ? (
       <div className="flex border-b border-border/40 bg-muted/30">
         {(["chat", "notes"] as const).map((tab) => (
           <button
@@ -155,6 +167,7 @@ export function ChatPanel({
           </button>
         ))}
       </div>
+      ) : null}
 
       {/* ── Content ──────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -167,7 +180,7 @@ export function ChatPanel({
               />
             ))}
           </div>
-        ) : activeTab === "chat" ? (
+        ) : activeTab === "chat" || !showTabs ? (
           <>
             {isRefreshing ? (
               <div className="border-b border-border/30 bg-accent/[0.04] px-4 py-1.5 text-center text-[11px] font-medium text-secondary">
@@ -193,6 +206,7 @@ export function ChatPanel({
       </div>
 
       {/* ── Delete action ────────────────────────── */}
+      {showDeleteAction ? (
       <div className="flex-shrink-0 border-t border-border/30 px-4 py-3">
         <Button
           type="button"
@@ -208,6 +222,7 @@ export function ChatPanel({
           {isDeleting ? "Apagando..." : "Apagar lead"}
         </Button>
       </div>
+      ) : null}
     </div>
   );
 }

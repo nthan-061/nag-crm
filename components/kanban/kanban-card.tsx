@@ -2,7 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Clock, Globe } from "lucide-react";
+import { Clock, Globe, MessageCircleMore } from "lucide-react";
 import { cn, formatPhone, formatRelativeTime } from "@/lib/utils";
 import type { KanbanCardRecord } from "@/lib/types/database";
 
@@ -28,6 +28,7 @@ export function KanbanCard({
   card,
   isSelected,
   onSelect,
+  onOpenChat,
   draggable = true,
   isOverlay = false,
   isPersisting = false,
@@ -35,6 +36,7 @@ export function KanbanCard({
   card: KanbanCardRecord;
   isSelected: boolean;
   onSelect: (leadId: string) => void;
+  onOpenChat?: (leadId: string) => void;
   draggable?: boolean;
   isOverlay?: boolean;
   isPersisting?: boolean;
@@ -112,6 +114,22 @@ export function KanbanCard({
           <span className="capitalize">{card.lead_origem ?? "manual"}</span>
         </div>
       </div>
+
+      {onOpenChat && !isOverlay ? (
+        <button
+          type="button"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-accent/20 bg-accent/[0.07] px-3 py-2 text-xs font-semibold text-accent transition hover:border-accent/35 hover:bg-accent/[0.12]"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenChat(card.lead_id);
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+          aria-label={`Abrir conversa de ${card.lead_nome}`}
+        >
+          <MessageCircleMore className="h-3.5 w-3.5" />
+          Abrir conversa
+        </button>
+      ) : null}
     </div>
   );
 }
