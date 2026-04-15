@@ -35,6 +35,10 @@ export const sendMediaFieldsSchema = z.object({
   caption: z.string().max(5000).optional().default("")
 });
 
+export const MAX_MEDIA_FILES_PER_SEND = 5;
+
+export const MAX_MEDIA_BATCH_SIZE_BYTES = 80 * 1024 * 1024;
+
 export const messageMediaTypeLabels: Record<Exclude<MessageMediaType, "text" | "sticker" | "contact" | "location" | "unknown">, string> = {
   image: "Imagem",
   audio: "Audio",

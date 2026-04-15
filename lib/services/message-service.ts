@@ -5,6 +5,8 @@ import { createMessage, listMessagesByLead, updateMessageMedia } from "@/lib/rep
 import { resolveInstanceName, sendEvolutionMediaMessage } from "@/lib/services/evolution-client";
 import {
   allowedMessageMediaMimeTypes,
+  MAX_MEDIA_BATCH_SIZE_BYTES,
+  MAX_MEDIA_FILES_PER_SEND,
   messageMediaTypeLabels,
   sendMediaFieldsSchema,
   sendMessageSchema
@@ -17,6 +19,17 @@ import {
   uploadMessageMediaFromBuffer
 } from "@/lib/services/media-storage-service";
 import type { MessageMediaType } from "@/lib/types/database";
+
+class MediaBatchSendError extends Error {
+  constructor(
+    message: string,
+    public readonly sentCount: number,
+    public readonly failedFileName?: string
+  ) {
+    super(message);
+    this.name = "MediaBatchSendError";
+  }
+}
 
 export async function getMessages(leadId: string) {
   return listMessagesByLead(leadId);
@@ -57,6 +70,107 @@ function mediaPlaceholder(mediaType: Exclude<MessageMediaType, "text" | "sticker
     video: "[Video enviado]",
     document: "[Documento enviado]"
   }[mediaType];
+}
+
+function getMediaFiles(formData: FormData) {
+  const files = [
+    ...formData.getAll("files"),
+    ...formData.getAll("files[]"),
+    ...formData.getAll("file")
+  ].filter((value): value is File => value instanceof File && value.size > 0);
+
+  if (files.length === 0) {
+    throw new Error("Arquivo de midia obrigatorio");
+  }
+
+  if (files.length > MAX_MEDIA_FILES_PER_SEND) {
+    throw new Error(`Envie no maximo ${MAX_MEDIA_FILES_PER_SEND} arquivos por vez`);
+  }
+
+  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+  if (totalSize > MAX_MEDIA_BATCH_SIZE_BYTES) {
+    throw new Error(`Envio excede o limite total de ${Math.round(MAX_MEDIA_BATCH_SIZE_BYTES / 1024 / 1024)}MB`);
+  }
+
+  for (const file of files) {
+    assertAllowedMediaFile(file);
+  }
+
+  return files;
+}
+
+async function sendSingleMediaFile(input: {
+  leadId: string;
+  phone: string;
+  cardId: string | null;
+  file: File;
+  caption: string;
+}) {
+  const { mimeType, mediaType } = assertAllowedMediaFile(input.file);
+  const timestamp = new Date().toISOString();
+  const fileName = sanitizeFileName(input.file.name);
+  const buffer = Buffer.from(await input.file.arrayBuffer());
+  const base64 = buffer.toString("base64");
+
+  const sent = await sendEvolutionMediaMessage({
+    number: input.phone,
+    mediaType,
+    base64,
+    mimeType,
+    fileName,
+    caption: input.caption
+  });
+
+  const createdMessage = await createMessage({
+    lead_id: input.leadId,
+    conteudo: input.caption || fileName || mediaPlaceholder(mediaType),
+    tipo: "saida",
+    timestamp,
+    external_id: sent.externalId,
+    media_type: mediaType,
+    media_mime_type: mimeType,
+    media_file_name: fileName,
+    media_size: buffer.byteLength,
+    media_metadata: {
+      sentFromCrm: true,
+      caption: input.caption || null,
+      evolutionResponse: sent.externalId ? { externalId: sent.externalId } : null
+    }
+  });
+
+  if (!createdMessage) {
+    throw new Error("Mensagem enviada, mas ja existia no CRM");
+  }
+
+  try {
+    const uploaded = await uploadMessageMediaFromBuffer({
+      buffer,
+      leadId: input.leadId,
+      messageId: createdMessage.id,
+      mimeType,
+      fileName
+    });
+
+    return updateMessageMedia(createdMessage.id, {
+      media_mime_type: uploaded.mimeType,
+      media_storage_path: uploaded.storagePath,
+      media_url: `/api/messages/media/${createdMessage.id}`,
+      media_size: uploaded.size,
+      media_metadata: {
+        ...(createdMessage.media_metadata ?? {}),
+        storageUploadedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.warn("[message-send-media] sent to Evolution but failed to store media", {
+      messageId: createdMessage.id,
+      error: error instanceof Error ? error.message : String(error)
+    });
+
+    return createdMessage;
+  } finally {
+    if (input.cardId) await touchCard(input.cardId, timestamp);
+  }
 }
 
 export async function sendMessage(payload: unknown) {
@@ -128,79 +242,39 @@ export async function sendMediaMessage(formData: FormData) {
     leadId: formData.get("leadId"),
     caption: formData.get("caption") ?? ""
   });
-  const file = formData.get("file");
-
-  if (!(file instanceof File)) {
-    throw new Error("Arquivo de midia obrigatorio");
-  }
-
-  const { mimeType, mediaType } = assertAllowedMediaFile(file);
-  const timestamp = new Date().toISOString();
+  const files = getMediaFiles(formData);
   const { cardId, phone } = await getLeadMessagingContext(parsed.leadId);
-  const fileName = sanitizeFileName(file.name);
   const caption = parsed.caption.trim();
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const base64 = buffer.toString("base64");
+  const messages = [];
 
-  const sent = await sendEvolutionMediaMessage({
-    number: phone,
-    mediaType,
-    base64,
-    mimeType,
-    fileName,
-    caption
-  });
-
-  const createdMessage = await createMessage({
-    lead_id: parsed.leadId,
-    conteudo: caption || fileName || mediaPlaceholder(mediaType),
-    tipo: "saida",
-    timestamp,
-    external_id: sent.externalId,
-    media_type: mediaType,
-    media_mime_type: mimeType,
-    media_file_name: fileName,
-    media_size: buffer.byteLength,
-    media_metadata: {
-      sentFromCrm: true,
-      caption: caption || null,
-      evolutionResponse: sent.externalId ? { externalId: sent.externalId } : null
+  for (const file of files) {
+    try {
+      messages.push(
+        await sendSingleMediaFile({
+          leadId: parsed.leadId,
+          phone,
+          cardId,
+          file,
+          caption: files.length === 1 ? caption : ""
+        })
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new MediaBatchSendError(
+        `Falha ao enviar ${sanitizeFileName(file.name)}: ${message}`,
+        messages.length,
+        sanitizeFileName(file.name)
+      );
     }
-  });
-
-  if (!createdMessage) {
-    throw new Error("Mensagem enviada, mas ja existia no CRM");
   }
 
-  try {
-    const uploaded = await uploadMessageMediaFromBuffer({
-      buffer,
-      leadId: parsed.leadId,
-      messageId: createdMessage.id,
-      mimeType,
-      fileName
-    });
+  return {
+    messages,
+    sent: messages.length,
+    failed: null
+  };
+}
 
-    const updated = await updateMessageMedia(createdMessage.id, {
-      media_mime_type: uploaded.mimeType,
-      media_storage_path: uploaded.storagePath,
-      media_url: `/api/messages/media/${createdMessage.id}`,
-      media_size: uploaded.size,
-      media_metadata: {
-        ...(createdMessage.media_metadata ?? {}),
-        storageUploadedAt: new Date().toISOString()
-      }
-    });
-
-    if (cardId) await touchCard(cardId, timestamp);
-    return updated;
-  } catch (error) {
-    console.warn("[message-send-media] sent to Evolution but failed to store media", {
-      messageId: createdMessage.id,
-      error: error instanceof Error ? error.message : String(error)
-    });
-
-    if (cardId) await touchCard(cardId, timestamp);
-    return createdMessage;
-  }
+export function isMediaBatchSendError(error: unknown): error is MediaBatchSendError {
+  return error instanceof MediaBatchSendError;
 }
