@@ -39,6 +39,10 @@ export function ConversationsWorkspace({
   }
 
   useEffect(() => {
+    void refreshCards();
+  }, []);
+
+  useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     const channel = supabase
       .channel(`${REALTIME_CHANNEL}:conversations`)
